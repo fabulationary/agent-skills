@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fabulation — Constellation Prototype</title>
+<style>
+  :root{
+    --bg0:#070912; --bg1:#0d1120; --panel:rgba(14,18,34,.88); --line:rgba(139,147,176,.18);
+    --ink:#e8ecf8; --muted:#8b93b0; --dim:#5b6382;
+    --gold:#f0c25f; --amber:#ff9a3d; --cyan:#56d9e8; --red:#ff5d6c;
+    --ready:#dfe6f5; --locked:#39415f; --stale:#9a8fc0; --ghost:#55608a;
+    --sans:"Avenir Next",Avenir,"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+    --mono:"JetBrains Mono","SFMono-Regular",ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{background:radial-gradient(120% 90% at 60% 40%, var(--bg1) 0%, var(--bg0) 70%);
+    color:var(--ink);font:14px/1.5 var(--sans)}
+  button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+  button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;border-radius:4px}
+
+  #gl{position:fixed;inset:0;display:block;cursor:grab}
+  #gl.dragging{cursor:grabbing}
+  #labels{position:fixed;inset:0;pointer-events:none;overflow:hidden}
+  .lbl{position:absolute;transform:translate(-50%,-160%);white-space:nowrap;
+    font-size:12px;letter-spacing:.02em;color:var(--ink);text-shadow:0 1px 6px rgba(0,0,0,.9);
+    display:flex;align-items:center;gap:6px;transition:opacity .2s}
+  .lbl .dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .lbl.ghosted{color:var(--ghost)}
+  .lbl.sel{font-weight:600;color:#fff}
+
+  /* ---------- chrome ---------- */
+  header{position:fixed;top:0;left:0;right:0;z-index:55;display:flex;align-items:center;gap:18px;
+    padding:10px 18px;background:linear-gradient(rgba(7,9,18,.92),rgba(7,9,18,.55) 80%,transparent);
+    }
+  .wordmark{font-size:12px;font-weight:700;letter-spacing:.34em;color:var(--muted)}
+  .universe{font-size:16px;font-weight:600;letter-spacing:.04em}
+  .digest{display:flex;gap:14px;margin-left:8px}
+  .digest span{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .digest i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  header .spacer{flex:1}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{padding:6px 14px;font-size:12px;letter-spacing:.06em;color:var(--muted)}
+  .seg button[aria-pressed="true"]{background:rgba(139,147,176,.14);color:var(--ink)}
+  #queueBtn{position:relative;border:1px solid var(--line);border-radius:8px;padding:6px 14px;font-size:12px;letter-spacing:.06em;color:var(--muted)}
+  #queueBtn .badge{display:inline-block;min-width:18px;text-align:center;margin-left:8px;padding:1px 5px;border-radius:9px;
+    background:var(--amber);color:#22150a;font-family:var(--mono);font-size:11px;font-weight:700}
+
+  #crumb{position:fixed;top:52px;left:18px;z-index:25;font-family:var(--mono);font-size:12px;color:var(--muted)}
+  #crumb b{color:var(--ink);font-weight:600}
+
+  #hint{position:fixed;left:18px;bottom:16px;z-index:25;font-size:12px;color:var(--dim);letter-spacing:.04em}
+
+  #legend{position:fixed;right:18px;bottom:16px;z-index:25;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:10px 14px;display:grid;grid-template-columns:auto auto;gap:4px 18px;backdrop-filter:blur(8px)}
+  #legend div{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+  #legend i{width:8px;height:8px;border-radius:50%}
+  #legend i.ring{background:none;border:1.5px solid var(--ready)}
+  #legend i.gring{background:none;border:1.5px dashed var(--ghost)}
+
+  /* ---------- node panel ---------- */
+  #panel{position:fixed;top:0;right:0;bottom:0;width:390px;max-width:92vw;z-index:40;background:var(--panel);
+    border-left:1px solid var(--line);backdrop-filter:blur(14px);transform:translateX(102%);
+    transition:transform .28s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+  #panel.open{transform:none}
+  #panel .head{padding:56px 22px 16px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-size:10px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:var(--muted)}
+  #panel h2{font-size:21px;font-weight:600;letter-spacing:.01em;margin:4px 0 10px;text-wrap:balance}
+  #panel .body{flex:1;overflow-y:auto;padding:16px 22px 24px;display:flex;flex-direction:column;gap:20px}
+  #panelClose{position:absolute;top:56px;right:16px;color:var(--muted);font-size:18px;line-height:1;padding:4px 8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:2px 9px;border-radius:20px;font-family:var(--mono);
+    font-size:10.5px;letter-spacing:.04em;border:1px solid var(--line);color:var(--muted)}
+  .chip i{width:7px;height:7px;border-radius:50%}
+  .desc{font-size:13px;color:var(--muted);max-width:60ch}
+  .unlock{font-size:12px;color:var(--dim);border-left:2px solid var(--locked);padding-left:10px}
+  .sect{font-size:10px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+  .art{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+  .art .row{display:flex;align-items:center;gap:10px}
+  .art .name{font-family:var(--mono);font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis}
+  .art .ver{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{padding:5px 12px;border-radius:7px;border:1px solid var(--line);font-size:12px;color:var(--ink)}
+  .btn:hover{border-color:var(--muted)}
+  .btn.ok{border-color:rgba(240,194,95,.5);color:var(--gold)}
+  .btn.warn{border-color:rgba(255,93,108,.45);color:var(--red)}
+  .btn.go{border-color:rgba(86,217,232,.5);color:var(--cyan)}
+  .fb{display:none;flex-direction:column;gap:8px}
+  .fb.open{display:flex}
+  .fb textarea{background:rgba(7,9,18,.6);border:1px solid var(--line);border-radius:8px;color:var(--ink);
+    font:12px/1.5 var(--sans);padding:8px 10px;min-height:64px;resize:vertical}
+  .note{font-size:12px;color:var(--muted);border-left:2px solid var(--amber);padding:2px 0 2px 10px;margin-bottom:8px}
+  .note .meta{font-family:var(--mono);font-size:10.5px;color:var(--dim);display:block;margin-top:2px}
+
+  /* ---------- review drawer ---------- */
+  #drawer{position:fixed;left:0;right:0;bottom:0;z-index:45;background:var(--panel);border-top:1px solid var(--line);
+    backdrop-filter:blur(14px);transform:translateY(103%);transition:transform .28s cubic-bezier(.2,.8,.2,1);
+    max-height:46vh;display:flex;flex-direction:column}
+  #drawer.open{transform:none}
+  #drawer .head{display:flex;align-items:center;padding:12px 22px;border-bottom:1px solid var(--line)}
+  #drawer .head h3{font-size:13px;font-weight:600;letter-spacing:.12em;text-transform:uppercase}
+  #drawer .items{overflow-y:auto;padding:12px 22px 18px;display:flex;flex-direction:column;gap:10px}
+  .qi{display:flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+  .qi .what{flex:1;min-width:0}
+  .qi .what .file{font-family:var(--mono);font-size:12.5px}
+  .qi .what .where{font-size:11.5px;color:var(--dim);margin-top:1px}
+  .qi .what .why{font-size:11.5px;color:var(--muted);margin-top:1px}
+
+  /* ---------- atlas ---------- */
+  #atlas{position:fixed;inset:0;z-index:20;overflow-y:auto;background:rgba(7,9,18,.94);display:none;
+    padding:96px 28px 40px}
+  #atlas.open{display:block}
+  #panel.open ~ #atlas{padding-right:418px}
+  #atlas .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;max-width:1280px;margin:0 auto}
+  .pillarCard{border:1px solid var(--line);border-radius:12px;padding:16px;background:rgba(14,18,34,.6)}
+  .pillarCard h3{font-size:12px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .pillarCard h3 i{width:9px;height:9px;border-radius:50%}
+  .pillarCard.ghost{border-style:dashed;opacity:.75}
+  .prow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:7px 8px;border-radius:8px}
+  .prow:hover{background:rgba(139,147,176,.1)}
+  .prow .nm{flex:1;font-size:13px}
+  .prow .cnt{font-family:var(--mono);font-size:11px;color:var(--dim)}
+  .enable{margin-top:10px;width:100%;justify-content:center;display:flex}
+
+  #toast{position:fixed;left:50%;bottom:70px;transform:translate(-50%,20px);z-index:60;background:var(--panel);
+    border:1px solid var(--line);border-radius:10px;padding:10px 18px;font-size:13px;opacity:0;pointer-events:none;
+    transition:opacity .25s, transform .25s;backdrop-filter:blur(10px)}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  #toast b{color:var(--gold)}
+
+  #glFail{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:50;display:none;
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 18px;font-size:12.5px;color:var(--muted)}
+
+  @media (prefers-reduced-motion: reduce){
+    #panel,#drawer,#toast,.lbl{transition:none}
+  }
+  @media (max-width:720px){
+    .digest{display:none} #legend{display:none} #hint{display:none}
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gl" aria-label="Constellation view: 3D map of the CARFIGHT IP universe. Use Atlas view for a list equivalent."></canvas>
+<div id="labels" aria-hidden="true"></div>
+
+<header>
+  <span class="wordmark">FABULATION</span>
+  <span class="universe">CARFIGHT</span>
+  <div class="digest" id="digest"></div>
+  <span class="spacer"></span>
+  <div class="seg" role="group" aria-label="View">
+    <button id="viewConst" aria-pressed="true">Constellation</button>
+    <button id="viewAtlas" aria-pressed="false">Atlas</button>
+  </div>
+  <button id="queueBtn">Review queue<span class="badge" id="queueBadge">0</span></button>
+</header>
+
+<div id="crumb"></div>
+<div id="hint">drag to orbit &nbsp;·&nbsp; scroll to zoom &nbsp;·&nbsp; click a node</div>
+<div id="glFail">WebGL is unavailable — showing the Atlas view. Everything works from here too.</div>
+
+<div id="legend" aria-label="Node state legend">
+  <div><i style="background:var(--gold)"></i> approved</div>
+  <div><i style="background:var(--amber)"></i> in review</div>
+  <div><i style="background:var(--cyan)"></i> generating</div>
+  <div><i style="background:var(--red)"></i> changes requested</div>
+  <div><i class="ring"></i> ready</div>
+  <div><i style="background:var(--locked)"></i> locked</div>
+  <div><i style="background:var(--stale)"></i> stale</div>
+  <div><i class="gring"></i> planned</div>
+</div>
+
+<aside id="panel" aria-label="Node detail">
+  <button id="panelClose" aria-label="Close panel">✕</button>
+  <div class="head">
+    <span class="eyebrow" id="pEyebrow"></span>
+    <h2 id="pTitle"></h2>
+    <span class="chip" id="pChip"></span>
+  </div>
+  <div class="body" id="pBody"></div>
+</aside>
+
+<section id="drawer" aria-label="Review queue">
+  <div class="head"><h3>Awaiting you</h3><span class="spacer" style="flex:1"></span>
+    <button class="btn" id="drawerClose">Close</button></div>
+  <div class="items" id="queueItems"></div>
+</section>
+
+<section id="atlas" aria-label="Atlas view"><div class="grid" id="atlasGrid"></div></section>
+
+<div id="toast" role="status"></div>
+
+<script>
+'use strict';
+/* ============================== data ============================== */
+const PILLARS = {
+  core:      {name:'Core',              hue:[0.62,0.68,0.85], angle:180, z: 0.0},
+  games:     {name:'Games',             hue:[0.42,0.60,1.00], angle:-32, z: 2.4},
+  video:     {name:'Video',             hue:[1.00,0.52,0.78], angle: 26, z:-2.2},
+  marketing: {name:'Marketing',         hue:[0.50,0.88,0.55], angle: 76, z: 1.4},
+  business:  {name:'Business',          hue:[0.72,0.62,0.95], angle:-84, z:-1.6},
+  audio:     {name:'Audio',             hue:[0.68,0.52,1.00], angle:136, z:-3.2, planned:true},
+  physical:  {name:'Physical & Visual', hue:[1.00,0.68,0.42], angle:-136,z: 3.0, planned:true},
+};
+const A = (name,v,state,notes)=>({name,v,state,notes:notes||[]});
+const NODES = [
+  {id:'spark', pillar:'core', name:'Spark', r:11.2, desc:'The original creative prompt: post-apocalyptic fantasy where belief warps reality around ground zero.',
+   arts:[A('creative_spark.md',1,'approved')]},
+  {id:'bible', pillar:'core', name:'World Bible', r:8.0, desc:'Rules, factions, characters, and visual identity of the CARFIGHT universe.',
+   arts:[A('world_bible_rules.md',2,'approved'),A('world_bible_factions.md',2,'approved'),
+         A('world_bible_characters.md',3,'approved',[{v:2,when:'Jul 4, 19:02',text:'Make GUNBUNNY a bit more sarcastic.'}]),
+         A('world_bible_visuals.md',2,'approved')]},
+  {id:'continuity', pillar:'core', name:'Continuity Check', r:5.4, desc:'Lore Librarian audit of internal consistency across the bible drafts.',
+   arts:[A('continuity_report.md',2,'approved')]},
+  {id:'critique', pillar:'core', name:'Creative Critique', r:3.1, desc:'Creative Critic pass: originality, stakes, and franchise potential.',
+   arts:[A('creative_critique.md',2,'approved')]},
+  {id:'canon', pillar:'core', name:'Canon', r:0, desc:'The approved World Bible. Everything orbits what is true about the IP — all pillars branch from here.',
+   arts:[A('canon_bible_compiled.md',1,'approved')]},
+
+  {id:'gdd', pillar:'games', name:'Game Design', r:4.5, desc:'Core loop, vehicle systems, and combat model for the CARFIGHT game.',
+   arts:[A('game_design_loop.md',2,'approved'),A('game_design_vehicles.md',1,'approved'),A('game_design_combat.md',2,'approved')]},
+  {id:'whitebox', pillar:'games', name:'Unreal Whitebox', r:8.2, desc:'Playable greybox prototype: level layout, gameplay script, HUD config.',
+   arts:[A('prototype_layout_spec.md',1,'generating'),A('prototype_gameplay_script.md',1,'queued'),A('prototype_ui_config.md',1,'queued')]},
+  {id:'qa', pillar:'games', name:'QA & Telemetry', r:11.4, desc:'PIE test runs, telemetry capture, and GDD compliance report.', unlockedBy:'whitebox', arts:[]},
+
+  {id:'screenplay', pillar:'video', name:'Screenplay', r:4.5, desc:'Pilot scene in Fountain format, written against approved canon.',
+   arts:[A('screenplay_scene.md',2,'in_review',[{v:1,when:'Jul 5, 09:41',text:'Open on the repair bay, not the highway — meet the trio before the first duel.'}])]},
+  {id:'styleguide', pillar:'video', name:'Visual Style Guide', r:7.6, desc:'Look development: palettes, materials, cinematography and image-gen prompts.',
+   arts:[A('visual_style_guide_and_prompts.md',2,'approved')]},
+  {id:'trailer', pillar:'video', name:'Trailer Edit', r:10.6, desc:'Teaser edit script cut against the style guide and generated shots.',
+   plannedArts:['trailer_edit_script.md'], arts:[]},
+
+  {id:'arg', pillar:'marketing', name:'ARG Campaign', r:4.5, desc:'Alternate-reality rabbit hole introducing the belief-engine mystery.',
+   arts:[A('arg_marketing_campaign.md',2,'changes_requested',[{v:2,when:'Jul 6, 14:18',text:'The rabbit hole should start inside the game demo, not on billboards.'}])]},
+  {id:'advertising', pillar:'marketing', name:'Advertising', r:7.4, desc:'Paid creative concepts across placements.', unlockedBy:'arg', arts:[]},
+  {id:'social', pillar:'marketing', name:'Social Accounts', r:10.0, desc:'In-fiction account voices and content calendars.', unlockedBy:'arg', arts:[]},
+  {id:'community', pillar:'marketing', name:'Community Growth', r:12.6, desc:'Fan-channel seeding, creator kits, UGC policy.', unlockedBy:'social', arts:[]},
+
+  {id:'monetization', pillar:'business', name:'Monetization & Licensing', r:4.5, desc:'Revenue model and licensing strategy across the pillars.',
+   arts:[A('monetization_licensing_plan.md',2,'approved')]},
+  {id:'pitches', pillar:'business', name:'Pitch Portfolio', r:8.0, desc:'Master transmedia pitch plus per-medium decks.',
+   arts:[A('pitch_master_transmedia.md',2,'stale',[{v:2,when:'Jul 6, 10:02',text:'Approved against Canon v1 — canon amended since (characters v3). Re-confirm.'}]),
+         A('pitch_media_decks.md',2,'approved'),A('pitch_merch_marketing.md',2,'approved')]},
+
+  {id:'sonic', pillar:'audio', name:'Sonic Identity', r:4.5, desc:'Planned: engine choirs, faction motifs, the sound of belief bending physics.', arts:[]},
+  {id:'audiodrama', pillar:'audio', name:'Audio Drama', r:7.6, desc:'Planned: pilot audio episode.', arts:[]},
+  {id:'soundtrack', pillar:'audio', name:'Soundtrack', r:10.6, desc:'Planned: album concept and briefs.', arts:[]},
+  {id:'comic', pillar:'physical', name:'Graphic Novel', r:4.5, desc:'Planned: origin arc as a graphic novel.', arts:[]},
+  {id:'artbook', pillar:'physical', name:'Art Book', r:7.6, desc:'Planned: collected concept art of the wasteland.', arts:[]},
+  {id:'merch', pillar:'physical', name:'Merch Line', r:10.6, desc:'Planned: vehicle model kits and faction gear.', arts:[]},
+];
+const EDGES = [
+  ['spark','bible'],['bible','continuity'],['continuity','critique'],['critique','canon'],
+  ['canon','gdd'],['gdd','whitebox'],['whitebox','qa'],
+  ['canon','screenplay'],['screenplay','styleguide'],['styleguide','trailer'],
+  ['canon','arg'],['arg','advertising'],['advertising','social'],['social','community'],
+  ['canon','monetization'],['monetization','pitches'],
+  ['canon','sonic'],['sonic','audiodrama'],['audiodrama','soundtrack'],
+  ['canon','comic'],['comic','artbook'],['artbook','merch'],
+];
+
+/* ---------- derived state ---------- */
+const byId = Object.fromEntries(NODES.map(n=>[n.id,n]));
+function nodeState(n){
+  if (PILLARS[n.pillar].planned) return 'planned';
+  if (n.unlockedBy && nodeState(byId[n.unlockedBy])!=='approved') return 'locked';
+  if (!n.arts.length) return 'ready';
+  const s = n.arts.map(a=>a.state);
+  if (s.some(x=>x==='generating'||x==='queued')) return 'generating';
+  if (s.some(x=>x==='changes_requested')) return 'changes_requested';
+  if (s.some(x=>x==='in_review')) return 'in_review';
+  if (s.some(x=>x==='stale')) return 'stale';
+  if (s.every(x=>x==='approved')) return 'approved';
+  return 'ready';
+}
+const STATE = {
+  approved:{c:[0.94,0.76,0.37], style:0, label:'approved'},
+  in_review:{c:[1.0,0.60,0.24], style:2, label:'in review'},
+  generating:{c:[0.34,0.85,0.91], style:2, label:'generating'},
+  changes_requested:{c:[1.0,0.36,0.42], style:0, label:'changes requested'},
+  ready:{c:[0.87,0.90,0.96], style:1, label:'ready'},
+  locked:{c:[0.28,0.32,0.46], style:4, label:'locked'},
+  stale:{c:[0.60,0.56,0.75], style:5, label:'stale'},
+  planned:{c:[0.33,0.38,0.54], style:3, label:'planned'},
+  queued:{c:[0.34,0.85,0.91], style:2, label:'queued'},
+};
+const cssColor = c=>`rgb(${c.map(x=>Math.round(x*255)).join(',')})`;
+
+/* ---------- layout ---------- */
+const D2R = Math.PI/180;
+NODES.forEach((n,i)=>{
+  const p = PILLARS[n.pillar], th = p.angle*D2R;
+  const wob = Math.sin(i*2.39)*0.55;
+  n.pos = [ n.r*Math.cos(th), n.r*Math.sin(th)*0.72 + wob, p.z*(0.35+0.065*n.r) + Math.cos(i*1.7)*0.5 ];
+  if(n.id==='canon') n.pos=[0,0,0];
+});
+
+/* ============================== webgl ============================== */
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl',{antialias:true,alpha:false});
+let glOK = !!gl;
+
+function mat4Mul(a,b){const o=new Float32Array(16);
+  for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o}
+function persp(fov,asp,n,f){const t=1/Math.tan(fov/2);return new Float32Array([t/asp,0,0,0, 0,t,0,0, 0,0,(f+n)/(n-f),-1, 0,0,2*f*n/(n-f),0])}
+function lookAt(e,c,u){
+  let z=[e[0]-c[0],e[1]-c[1],e[2]-c[2]];let l=Math.hypot(...z);z=z.map(v=>v/l);
+  let x=[u[1]*z[2]-u[2]*z[1],u[2]*z[0]-u[0]*z[2],u[0]*z[1]-u[1]*z[0]];l=Math.hypot(...x)||1;x=x.map(v=>v/l);
+  const y=[z[1]*x[2]-z[2]*x[1],z[2]*x[0]-z[0]*x[2],z[0]*x[1]-z[1]*x[0]];
+  return new Float32Array([x[0],y[0],z[0],0, x[1],y[1],z[1],0, x[2],y[2],z[2],0,
+    -(x[0]*e[0]+x[1]*e[1]+x[2]*e[2]),-(y[0]*e[0]+y[1]*e[1]+y[2]*e[2]),-(z[0]*e[0]+z[1]*e[1]+z[2]*e[2]),1])}
+
+function makeProg(vs,fs){
+  const c=(t,s)=>{const h=gl.createShader(t);gl.shaderSource(h,s);gl.compileShader(h);
+    if(!gl.getShaderParameter(h,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(h));return h};
+  const p=gl.createProgram();gl.attachShader(p,c(gl.VERTEX_SHADER,vs));gl.attachShader(p,c(gl.FRAGMENT_SHADER,fs));
+  gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return p}
+
+const PT_VS=`attribute vec3 aPos;attribute float aSize;attribute vec3 aColor;attribute float aStyle;attribute float aPhase;
+uniform mat4 uVP;uniform float uScale;uniform float uTime;varying vec3 vC;varying float vS;
+void main(){gl_Position=uVP*vec4(aPos,1.0);float p=1.0;
+if(aStyle==2.0)p=1.0+0.22*sin(uTime*2.6+aPhase);
+if(aStyle==5.0)p=1.0+0.07*sin(uTime*9.0+aPhase);
+gl_PointSize=max(1.0,aSize*p*uScale/max(0.1,gl_Position.w));vC=aColor;vS=aStyle;}`;
+const PT_FS=`precision mediump float;varying vec3 vC;varying float vS;
+void main(){vec2 q=gl_PointCoord*2.0-1.0;float d=length(q);if(d>1.0)discard;
+float core=smoothstep(0.60,0.50,d);float glow=pow(max(0.0,1.0-d),2.2)*0.55;
+float ring=smoothstep(0.10,0.02,abs(d-0.55));float a;
+if(vS==1.0)a=ring*0.95+glow*0.12;
+else if(vS==3.0)a=ring*0.5+glow*0.12;
+else if(vS==4.0)a=core*0.8+glow*0.2;
+else a=core+glow;
+gl_FragColor=vec4(vC*a,a);}`;
+const LN_VS=`attribute vec3 aPos;attribute vec4 aColor;uniform mat4 uVP;varying vec4 vC;
+void main(){gl_Position=uVP*vec4(aPos,1.0);vC=aColor;}`;
+const LN_FS=`precision mediump float;varying vec4 vC;void main(){gl_FragColor=vec4(vC.rgb*vC.a,vC.a);}`;
+
+let ptProg,lnProg,ptLoc,lnLoc;
+let nodeBuf={},starBuf={},edgeBuf={},pulseBuf={};
+const FOV=45*D2R;
+
+function attrib(prog,name,buf,size,stride,off){
+  const l=gl.getAttribLocation(prog,name);gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,size,gl.FLOAT,false,stride,off)}
+
+function bezier(p0,p1,p2,t){const u=1-t;
+  return [u*u*p0[0]+2*u*t*p1[0]+t*t*p2[0], u*u*p0[1]+2*u*t*p1[1]+t*t*p2[1], u*u*p0[2]+2*u*t*p1[2]+t*t*p2[2]]}
+function edgeCtrl(a,b){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2];
+  const l=Math.hypot(m[0],m[1],m[2])||1;const k=0.16*Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2]);
+  return [m[0]+m[0]/l*k, m[1]+m[1]/l*k+0.25, m[2]+m[2]/l*k]}
+
+function buildStatic(){
+  // stars
+  const N=420, arr=new Float32Array(N*8);
+  for(let i=0;i<N;i++){
+    const r=34+Math.random()*46, th=Math.random()*Math.PI*2, ph=Math.acos(2*Math.random()-1);
+    const warm=Math.random()<0.14;
+    arr.set([r*Math.sin(ph)*Math.cos(th), r*Math.cos(ph)*0.8, r*Math.sin(ph)*Math.sin(th),
+      0.10+Math.random()*0.16,
+      warm?0.85:0.45, warm?0.72:0.52, warm?0.5:0.72, 0],i*8);
+  }
+  starBuf={buf:gl.createBuffer(),n:N};
+  gl.bindBuffer(gl.ARRAY_BUFFER,starBuf.buf);gl.bufferData(gl.ARRAY_BUFFER,arr,gl.STATIC_DRAW);
+  nodeBuf.buf=gl.createBuffer(); edgeBuf.buf=gl.createBuffer(); pulseBuf.buf=gl.createBuffer();
+}
+function rebuildDynamic(){
+  if(!glOK) return;
+  // nodes: pos3 size1 color3 style1 phase1 = 9 floats
+  const arr=new Float32Array(NODES.length*9);
+  NODES.forEach((n,i)=>{
+    const st=STATE[nodeState(n)];
+    const size = n.id==='canon'?2.6 : (byId[n.id].pillar==='core'?1.05:1.15);
+    const sel = selected===n.id?1.25:1;
+    arr.set([...n.pos, size*sel, ...st.c, st.style, i*1.37], i*9);
+  });
+  gl.bindBuffer(gl.ARRAY_BUFFER,nodeBuf.buf);gl.bufferData(gl.ARRAY_BUFFER,arr,gl.DYNAMIC_DRAW);
+  nodeBuf.n=NODES.length;
+  // edges: sampled beziers, pos3 rgba4 = 7 floats/vert
+  const SEG=16, verts=[];
+  EDGES.forEach(([a,b])=>{
+    const na=byId[a],nb=byId[b],p1=edgeCtrl(na.pos,nb.pos);
+    const hue=PILLARS[nb.pillar].hue;
+    const sa=nodeState(na),sb=nodeState(nb);
+    const alpha=(sb==='planned'||sb==='locked')?0.10:(sa==='approved'?0.30:0.22);
+    for(let s=0;s<SEG;s++){
+      const q0=bezier(na.pos,p1,nb.pos,s/SEG), q1=bezier(na.pos,p1,nb.pos,(s+1)/SEG);
+      verts.push(...q0,...hue,alpha,...q1,...hue,alpha);
+    }
+  });
+  const ev=new Float32Array(verts);
+  gl.bindBuffer(gl.ARRAY_BUFFER,edgeBuf.buf);gl.bufferData(gl.ARRAY_BUFFER,ev,gl.DYNAMIC_DRAW);
+  edgeBuf.n=verts.length/7;
+}
+
+/* ---------- camera ---------- */
+const cam={yaw:1.28,pitch:0.30,dist:30,target:[-0.8,0,0]};
+let flyFrom=null,flyTo=null,flyT=1;
+function flyToNode(n){
+  const to={target:[...n.pos],dist:n.id==='canon'?22:15};
+  if(reduced){cam.target=to.target;cam.dist=to.dist;return}
+  flyFrom={target:[...cam.target],dist:cam.dist};flyTo=to;flyT=0;
+}
+function camEye(){
+  const cp=Math.cos(cam.pitch);
+  return [cam.target[0]+cam.dist*cp*Math.cos(cam.yaw),
+          cam.target[1]+cam.dist*Math.sin(cam.pitch),
+          cam.target[2]+cam.dist*cp*Math.sin(cam.yaw)]}
+let VP=null,W=0,H=0,DPR=1;
+function resize(){
+  DPR=Math.min(2,devicePixelRatio||1);
+  W=innerWidth;H=innerHeight;
+  canvas.width=W*DPR;canvas.height=H*DPR;
+  canvas.style.width=W+'px';canvas.style.height=H+'px';
+  if(glOK)gl.viewport(0,0,canvas.width,canvas.height);
+}
+addEventListener('resize',resize);
+
+function project(p){
+  const x=p[0],y=p[1],z=p[2];
+  const cx=VP[0]*x+VP[4]*y+VP[8]*z+VP[12], cy=VP[1]*x+VP[5]*y+VP[9]*z+VP[13],
+        cw=VP[3]*x+VP[7]*y+VP[11]*z+VP[15];
+  if(cw<=0.1)return null;
+  return {x:(cx/cw*0.5+0.5)*W, y:(1-(cy/cw*0.5+0.5))*H, w:cw};
+}
+
+/* ---------- labels ---------- */
+const labelWrap=document.getElementById('labels');
+const labelEls={};
+NODES.forEach(n=>{
+  const el=document.createElement('div');el.className='lbl';
+  el.innerHTML=`<span class="dot"></span><span class="nm"></span>`;
+  labelWrap.appendChild(el);labelEls[n.id]=el;
+});
+function paintLabels(){
+  NODES.forEach(n=>{
+    const el=labelEls[n.id],pr=glOK?project(n.pos):null;
+    if(!pr){el.style.opacity=0;return}
+    const st=nodeState(n);
+    el.style.left=pr.x+'px';el.style.top=pr.y+'px';
+    el.style.opacity=Math.max(0,Math.min(1, 2.2-pr.w/28))* (st==='planned'?0.6:1);
+    el.querySelector('.dot').style.background=cssColor(STATE[st].c);
+    el.querySelector('.nm').textContent=n.name;
+    el.classList.toggle('ghosted',st==='planned'||st==='locked');
+    el.classList.toggle('sel',selected===n.id);
+  });
+}
+
+/* ---------- render loop ---------- */
+let lastPointer=0;
+function frame(tms){
+  requestAnimationFrame(frame);
+  if(!glOK)return;
+  const t=tms/1000;
+  if(flyT<1&&flyTo){flyT=Math.min(1,flyT+0.055);const e=1-Math.pow(1-flyT,3);
+    cam.target=flyFrom.target.map((v,i)=>v+(flyTo.target[i]-v)*e);
+    cam.dist=flyFrom.dist+(flyTo.dist-flyFrom.dist)*e;}
+  if(!reduced && t-lastPointer>5 && !dragging) cam.yaw+=0.0009;
+  const P=persp(FOV,W/H,0.1,300), V=lookAt(camEye(),cam.target,[0,1,0]);
+  VP=mat4Mul(P,V);
+  gl.clearColor(0.027,0.035,0.07,1);gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.disable(gl.DEPTH_TEST);
+  const uScale=canvas.height/(2*Math.tan(FOV/2));
+  // edges
+  gl.useProgram(lnProg);
+  gl.uniformMatrix4fv(gl.getUniformLocation(lnProg,'uVP'),false,VP);
+  attrib(lnProg,'aPos',edgeBuf.buf,3,28,0);attrib(lnProg,'aColor',edgeBuf.buf,4,28,12);
+  gl.drawArrays(gl.LINES,0,edgeBuf.n);
+  // stars + nodes
+  gl.useProgram(ptProg);
+  gl.uniformMatrix4fv(gl.getUniformLocation(ptProg,'uVP'),false,VP);
+  gl.uniform1f(gl.getUniformLocation(ptProg,'uScale'),uScale);
+  gl.uniform1f(gl.getUniformLocation(ptProg,'uTime'),reduced?0:t);
+  const bindPts=b=>{attrib(ptProg,'aPos',b,3,36,0);attrib(ptProg,'aSize',b,1,36,12);
+    attrib(ptProg,'aColor',b,3,36,16);attrib(ptProg,'aStyle',b,1,36,28);attrib(ptProg,'aPhase',b,1,36,32)};
+  // stars use 8-float layout: pos3 size1 color3 pad1 → map style/phase to pad
+  attrib(ptProg,'aPos',starBuf.buf,3,32,0);attrib(ptProg,'aSize',starBuf.buf,1,32,12);
+  attrib(ptProg,'aColor',starBuf.buf,3,32,16);
+  const sLoc=gl.getAttribLocation(ptProg,'aStyle');gl.disableVertexAttribArray(sLoc);gl.vertexAttrib1f(sLoc,4);
+  const phLoc=gl.getAttribLocation(ptProg,'aPhase');gl.disableVertexAttribArray(phLoc);gl.vertexAttrib1f(phLoc,0);
+  gl.drawArrays(gl.POINTS,0,starBuf.n);
+  bindPts(nodeBuf.buf);
+  gl.drawArrays(gl.POINTS,0,nodeBuf.n);
+  // pulses along edges into generating nodes
+  const pulses=[];
+  EDGES.forEach(([a,b])=>{
+    if(nodeState(byId[b])!=='generating')return;
+    const na=byId[a],nb=byId[b],p1=edgeCtrl(na.pos,nb.pos);
+    const tt=reduced?0.5:(t*0.45)%1;
+    pulses.push([...bezier(na.pos,p1,nb.pos,tt),0.45,0.34,0.85,0.91,2,0]);
+  });
+  if(pulses.length){
+    const pa=new Float32Array(pulses.flat());
+    gl.bindBuffer(gl.ARRAY_BUFFER,pulseBuf.buf);gl.bufferData(gl.ARRAY_BUFFER,pa,gl.DYNAMIC_DRAW);
+    bindPts(pulseBuf.buf);gl.drawArrays(gl.POINTS,0,pulses.length);
+  }
+  paintLabels();
+}
+
+/* ---------- input ---------- */
+let dragging=false,moved=0,px=0,py=0;
+canvas.addEventListener('pointerdown',e=>{dragging=true;moved=0;px=e.clientX;py=e.clientY;
+  canvas.classList.add('dragging');canvas.setPointerCapture(e.pointerId);lastPointer=performance.now()/1000});
+canvas.addEventListener('pointermove',e=>{if(!dragging)return;
+  const dx=e.clientX-px,dy=e.clientY-py;moved+=Math.abs(dx)+Math.abs(dy);px=e.clientX;py=e.clientY;
+  cam.yaw+=dx*0.005;cam.pitch=Math.max(-1.35,Math.min(1.35,cam.pitch+dy*0.004));lastPointer=performance.now()/1000});
+canvas.addEventListener('pointerup',e=>{dragging=false;canvas.classList.remove('dragging');
+  if(moved<6)pick(e.clientX,e.clientY)});
+canvas.addEventListener('wheel',e=>{e.preventDefault();
+  cam.dist=Math.max(6,Math.min(70,cam.dist*(1+Math.sign(e.deltaY)*0.09)));lastPointer=performance.now()/1000},{passive:false});
+addEventListener('keydown',e=>{if(e.key==='Escape'){closePanel();drawer.classList.remove('open');
+  if(atlasOpen)toggleAtlas(false); flyFrom={target:[...cam.target],dist:cam.dist};flyTo={target:[-0.8,0,0],dist:30};flyT=reduced?1:0;
+  if(reduced){cam.target=[-0.8,0,0];cam.dist=30;}}});
+function pick(mx,my){
+  if(!VP)return;let best=null,bd=26;
+  NODES.forEach(n=>{const pr=project(n.pos);if(!pr)return;
+    const d=Math.hypot(pr.x-mx,pr.y-my);if(d<bd){bd=d;best=n}});
+  if(best)select(best.id); else closePanel();
+}
+
+/* ============================== ui ============================== */
+let selected=null, atlasOpen=false;
+const $=id=>document.getElementById(id);
+const panel=$('panel'),drawer=$('drawer');
+
+function digest(){
+  let ok=0,rev=0,gen=0;
+  NODES.forEach(n=>n.arts.forEach(a=>{
+    if(a.state==='approved')ok++;
+    else if(a.state==='in_review'||a.state==='changes_requested'||a.state==='stale')rev++;
+    else if(a.state==='generating'||a.state==='queued')gen++;}));
+  $('digest').innerHTML=
+    `<span><i style="background:var(--gold)"></i>${ok} approved</span>`+
+    `<span><i style="background:var(--amber)"></i>${rev} awaiting you</span>`+
+    `<span><i style="background:var(--cyan)"></i>${gen} generating</span>`;
+  $('queueBadge').textContent=rev;
+}
+function chip(state){const s=STATE[state];
+  return `<span class="chip"><i style="background:${cssColor(s.c)}"></i>${s.label}</span>`}
+
+function unlocksOf(nodeId){return NODES.filter(m=>m.unlockedBy===nodeId).map(m=>m.name)}
+
+function artActions(n,a,i){
+  const acts=[];
+  if(a.state==='in_review'){
+    acts.push(`<button class="btn ok" data-act="approve" data-n="${n.id}" data-i="${i}">Approve</button>`);
+    acts.push(`<button class="btn warn" data-act="changes" data-n="${n.id}" data-i="${i}">Request changes</button>`);
+  }else if(a.state==='changes_requested'){
+    acts.push(`<button class="btn go" data-act="regen" data-n="${n.id}" data-i="${i}">Regenerate</button>`);
+  }else if(a.state==='stale'){
+    acts.push(`<button class="btn go" data-act="reconfirm" data-n="${n.id}" data-i="${i}">Re-confirm</button>`);
+  }
+  return acts.join('');
+}
+function renderPanel(){
+  if(!selected){panel.classList.remove('open');$('crumb').innerHTML='';return}
+  const n=byId[selected],st=nodeState(n),p=PILLARS[n.pillar];
+  $('pEyebrow').textContent=p.name+' pillar';
+  $('pTitle').textContent=n.name;
+  $('pChip').innerHTML=`<i style="background:${cssColor(STATE[st].c)}"></i>${STATE[st].label}`;
+  $('crumb').innerHTML=`CARFIGHT / ${p.name} / <b>${n.name}</b>`;
+  let h=`<p class="desc">${n.desc}</p>`;
+  if(st==='locked') h+=`<p class="unlock">Unlocks when <b>${byId[n.unlockedBy].name}</b> is approved.</p>`;
+  if(st==='planned') h+=`<p class="unlock">Planned pillar — not yet implemented. Enabling it adds these stages to the universe.</p>
+    <button class="btn go" data-act="enable" data-n="${n.id}">Enable ${p.name} pillar</button>`;
+  if(st==='ready'&&n.plannedArts) h+=`<button class="btn go" data-act="generate" data-n="${n.id}">Generate ${n.plannedArts[0]}</button>`;
+  if(n.arts.length){
+    h+=`<div><div class="sect">Artifacts</div>`+n.arts.map((a,i)=>`
+      <div class="art">
+        <div class="row"><span class="name">${a.name}</span><span class="ver">v${a.v}</span>${chip(a.state)}</div>
+        ${a.state!=='queued'&&a.state!=='generating'?`<div class="row" style="justify-content:space-between">
+          <span class="ver">history: ${Array.from({length:a.v},(_,k)=>'v'+(k+1)).join(' → ')}${a.v>1?' · diff':''}</span></div>`:''}
+        <div class="actions">${artActions(n,a,i)}</div>
+        <div class="fb" id="fb-${n.id}-${i}">
+          <textarea placeholder="What should change? The note is kept with v${a.v} and shown beside the regenerated result."></textarea>
+          <div class="actions"><button class="btn warn" data-act="sendfb" data-n="${n.id}" data-i="${i}">Send &amp; request revision</button></div>
+        </div>
+      </div>`).join('')+`</div>`;
+  }
+  const notes=n.arts.flatMap(a=>a.notes.map(x=>({...x,file:a.name})));
+  if(notes.length){
+    h+=`<div><div class="sect">Feedback thread</div>`+notes.map(x=>
+      `<div class="note">${x.text}<span class="meta">${x.file} · on v${x.v} · ${x.when}</span></div>`).join('')+`</div>`;
+  }
+  const un=unlocksOf(n.id);
+  if(un.length) h+=`<div><div class="sect">Approval unlocks</div><p class="desc">${un.join(' · ')}</p></div>`;
+  $('pBody').innerHTML=h;
+  panel.classList.add('open');
+}
+function select(id){selected=id;renderPanel();rebuildDynamic();if(!atlasOpen)flyToNode(byId[id]);}
+function closePanel(){selected=null;renderPanel();rebuildDynamic();}
+$('panelClose').addEventListener('click',closePanel);
+
+/* ---------- review queue ---------- */
+function queueItems(){
+  const items=[];
+  NODES.forEach(n=>n.arts.forEach((a,i)=>{
+    if(['in_review','changes_requested','stale'].includes(a.state))
+      items.push({n,a,i});
+  }));
+  return items;
+}
+function renderQueue(){
+  const items=queueItems();
+  $('queueItems').innerHTML=items.length?items.map(({n,a,i})=>{
+    const un=unlocksOf(n.id);
+    return `<div class="qi">${chip(a.state)}
+      <div class="what"><div class="file">${a.name} <span style="color:var(--dim)">v${a.v}</span></div>
+      <div class="where">${PILLARS[n.pillar].name} / ${n.name}</div>
+      ${un.length&&a.state==='in_review'?`<div class="why">approving unlocks ${un.join(', ')}</div>`:''}
+      ${a.state==='stale'?`<div class="why">approved against earlier canon — re-confirm</div>`:''}</div>
+      <div class="actions">${artActions(n,a,i)}
+      <button class="btn" data-act="open" data-n="${n.id}">Open</button></div></div>`;
+  }).join(''):`<p class="desc" style="padding:8px 2px">Nothing awaits you. Next suggestion: ignite <b>Trailer Edit</b> — it is ready.</p>`;
+}
+$('queueBtn').addEventListener('click',()=>{renderQueue();drawer.classList.toggle('open')});
+$('drawerClose').addEventListener('click',()=>drawer.classList.remove('open'));
+
+/* ---------- atlas ---------- */
+function renderAtlas(){
+  const order=['core','games','video','marketing','business','audio','physical'];
+  $('atlasGrid').innerHTML=order.map(pid=>{
+    const p=PILLARS[pid];
+    const rows=NODES.filter(n=>n.pillar===pid).map(n=>{
+      const st=nodeState(n);
+      return `<button class="prow" data-act="open" data-n="${n.id}">
+        <span class="nm">${n.name}</span>
+        <span class="cnt">${n.arts.length?n.arts.length+' artifact'+(n.arts.length>1?'s':''):'—'}</span>
+        ${chip(st)}</button>`}).join('');
+    return `<div class="pillarCard ${p.planned?'ghost':''}">
+      <h3><i style="background:${cssColor(p.hue)}"></i>${p.name}${p.planned?' <span class="chip">planned</span>':''}</h3>
+      ${rows}
+      ${p.planned?`<div class="enable"><button class="btn go" data-act="enablePillar" data-p="${pid}">Enable pillar</button></div>`:''}
+    </div>`}).join('');
+}
+function toggleAtlas(on){
+  atlasOpen=on;
+  $('atlas').classList.toggle('open',on);
+  labelWrap.style.display=on?'none':'';
+  $('viewAtlas').setAttribute('aria-pressed',on);
+  $('viewConst').setAttribute('aria-pressed',!on);
+  if(on)renderAtlas();
+}
+$('viewAtlas').addEventListener('click',()=>toggleAtlas(true));
+$('viewConst').addEventListener('click',()=>toggleAtlas(false));
+
+/* ---------- actions ---------- */
+let toastTimer=null;
+function toast(msg){const t=$('toast');t.innerHTML=msg;t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),3400)}
+function refresh(){digest();renderPanel();renderQueue();if(atlasOpen)renderAtlas();rebuildDynamic()}
+
+function enablePillar(pid){
+  PILLARS[pid].planned=false;
+  const first=NODES.find(n=>n.pillar===pid);
+  NODES.filter(n=>n.pillar===pid).forEach((n,i)=>{if(i>0)n.unlockedBy=NODES.filter(m=>m.pillar===pid)[i-1].id});
+  toast(`<b>${PILLARS[pid].name}</b> pillar enabled — ${first.name} is ready`);
+  refresh();
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const act=b.dataset.act, n=b.dataset.n?byId[b.dataset.n]:null, i=+b.dataset.i, a=n&&n.arts[i];
+  if(act==='open'){toggleAtlas(false);select(n.id);drawer.classList.remove('open');}
+  if(act==='approve'){a.state='approved';
+    const un=unlocksOf(n.id).filter(()=>nodeState(n)==='approved');
+    toast(`<b>Approved</b> ${a.name} v${a.v}${un.length?` — ${un.join(', ')} unlocked`:''}`);refresh();}
+  if(act==='changes'){document.getElementById(`fb-${n.id}-${i}`).classList.add('open');return;}
+  if(act==='sendfb'){const ta=document.getElementById(`fb-${n.id}-${i}`).querySelector('textarea');
+    const txt=ta.value.trim()||'Revise per discussion.';
+    a.notes.push({v:a.v,when:'just now',text:txt});a.state='changes_requested';
+    toast(`Changes requested on <b>${a.name}</b> — note kept with v${a.v}`);refresh();}
+  if(act==='regen'){a.state='generating';toast(`Regenerating <b>${a.name}</b> with your note…`);refresh();
+    setTimeout(()=>{a.v++;a.state='in_review';toast(`<b>${a.name}</b> v${a.v} ready for review`);refresh();},4500);}
+  if(act==='reconfirm'){a.state='in_review';toast(`<b>${a.name}</b> moved to review for re-confirmation`);refresh();}
+  if(act==='generate'){n.arts=n.plannedArts.map(nm=>A(nm,1,'generating'));delete n.plannedArts;
+    toast(`Igniting <b>${n.name}</b>…`);refresh();
+    setTimeout(()=>{n.arts.forEach(x=>x.state='in_review');toast(`<b>${n.name}</b> draft ready for review`);refresh();},4500);}
+  if(act==='enable'){enablePillar(n.pillar);}
+  if(act==='enablePillar'){enablePillar(b.dataset.p);}
+});
+
+/* ---------- boot ---------- */
+resize();
+if(glOK){
+  try{
+    ptProg=makeProg(PT_VS,PT_FS);lnProg=makeProg(LN_VS,LN_FS);
+    buildStatic();rebuildDynamic();
+    canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();glOK=false;fallback();});
+    requestAnimationFrame(frame);
+  }catch(err){glOK=false;fallback();}
+}else fallback();
+function fallback(){
+  $('glFail').style.display='block';
+  document.getElementById('hint').style.display='none';
+  toggleAtlas(true);
+}
+digest();renderQueue();
+</script>
+</body>
+</html>
