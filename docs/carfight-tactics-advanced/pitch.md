@@ -33,7 +33,7 @@ Each reel is a visible strip of symbol faces — **HIT, TRUE (crit), MISS, JAM, 
 
 **Interface, never world:** the Tumbler is player-facing UI only. No character sees it, names it, or refers to it, ever. In-world, crews talk the way the Rim talks. (A Rim gunner wouldn't say any of the above. A Rim gunner would say: *some days the gun just knows.*)
 
-### Rigging the machine (the actual game)
+### Rigging the Maybe (the actual game)
 
 Player abilities are **reel manipulations**, spent from a per-battle resource called **NERVE** (the crew's banked confidence — earned by landing hits, executing clean maneuvers, and crew synergy; drained by taking cabin hits and watching allies wreck):
 
