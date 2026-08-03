@@ -1,0 +1,19 @@
+{
+  "name": "neon-descent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cyberpunk turn-based roguelike for Android, portrait, 16-bit pixel art. Act I vertical slice.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "balance": "node --experimental-strip-types --no-warnings tools/balance.ts",
+    "android": "cap sync android && cap open android"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  }
+}
