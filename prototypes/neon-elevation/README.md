@@ -29,7 +29,7 @@ catalog that makes up the rest of this repository.
 cd game && npm install && npm run dev
 ```
 
-43 tests (`npm test`), a headless balance harness (`npm run balance`), 21.5 KB gzipped.
+49 tests (`npm test`), a headless balance harness (`npm run balance`), 22.0 KB gzipped.
 See [game/README.md](game/README.md) for controls, scope, and the bugs the harness caught.
 
 ## Documents
@@ -83,15 +83,10 @@ defaulted to build the slice; both are trivially reversible:
    tunable cone angle, a `fourWay` fallback flag already wired through settings, and a
    `reversalCount` telemetry counter in the gesture recognizer to settle it with data.
 
-The new lore adds the one I'd most want you to weigh in on:
-
-3. **Act III risks making the player's entire kit dead weight at once.** If spikes, EMPs
-   and Trace-scrubbing all stop mattering the moment you reach Nirvana, a spike-heavy build
-   doesn't get a harder act — it gets four tiers of holding a useless controller. My
-   recommendation is that Nirvana keeps a thin machine presence (habitat maintenance and the
-   residences' own security, still running with nobody left to protect) so a machine-facing
-   build always has *something* to do. This needs a playtest, not an argument, and it is the
-   biggest risk the new structure introduces.
+**Resolved since:** whether Act III leaves a machine-facing build with nothing to do. It
+doesn't. Nirvana's machines were always up there and never stop working — what the biosynths
+have been doing for eleven weeks is learning their way *into* them. See
+[DESIGN.md §6.6](docs/DESIGN.md) and `game/src/sim/suborn.ts`.
 
 ## What the slice changed about the design
 
@@ -106,6 +101,11 @@ Building it moved three numbers, each for a reason worth recording:
   spreads pressure that one fast melee enemy used to carry alone.
 - **Floor tiles one ramp step lighter.** In an open cavern with no walls in frame, the
   map read as a black rectangle. Legibility beats atmosphere (ART-DIRECTION.md §0).
+- **The scent relay had to be snapshotted per round.** Whether a suborned machine got told
+  where you were depended on where its owner happened to sit in the actor array — an ordering
+  artifact, not a rule. It now reads a start-of-round snapshot, like the flow field does. The
+  one-turn lag that introduces is also the truthful reading: the pack has to smell you before
+  it can pass that on.
 - **The Scent Baffle had to suppress, not just clear.** Written first as "biosynths lose
   your trail", it was useless: anything standing next to the player re-acquired on the same
   turn. It now blanks re-acquisition for eight turns. An escape tool that doesn't buy a

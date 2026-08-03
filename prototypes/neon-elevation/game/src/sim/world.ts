@@ -15,6 +15,7 @@ import { generateFloor, MAP_H, MAP_W } from './mapgen.ts';
 import type { NavMap } from './path.ts';
 import { sightRadius, has } from './grafts.ts';
 import { stateFor, waveInterval } from './trace.ts';
+import { applySubversion } from './suborn.ts';
 import {
   Tile, TRANSPARENT, WALKABLE,
   type Actor, type Item, type LogLine, type World,
@@ -152,6 +153,7 @@ export function makeActor(world: World, kind: string, x: number, y: number): Act
     status: { burn: 0, lock: 0, blind: 0 },
     aware: false,
     scented: false,
+    suborned: false,
     fleeing: false,
     lastKnownX: -1,
     lastKnownY: -1,
@@ -247,6 +249,14 @@ export function buildFloor(world: World, floor: number): void {
     if (itemAt(world, spot.x, spot.y)) continue;
     if (spot.x === map.spawn.x && spot.y === map.spawn.y) continue;
     makeItem(world, loot.pickWeighted(lt.kinds, lt.weights), spot.x, spot.y, loot);
+  }
+
+  // Nirvana's machines predate the pets. What is new is who they answer to.
+  const suborned = applySubversion(world, floor, streams.loot);
+  if (suborned > 0) {
+    log(world, suborned === 1
+      ? 'ONE SYSTEM ON THIS TIER IS NOT ANSWERING THE STATION.'
+      : `${suborned} SYSTEMS ON THIS TIER ARE NOT ANSWERING THE STATION.`, 'bad');
   }
 
   world.traceState = stateFor(world.trace);

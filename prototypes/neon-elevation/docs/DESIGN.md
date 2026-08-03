@@ -96,8 +96,10 @@ Three populations, stacked vertically, who barely acknowledge each other exist:
 - **The climb** is nine days of container stacks and maintenance crawlspace, tended by machines
   and a skeleton crew who signed contracts they did not read closely.
 - **Nirvana** is a garden. Actual soil, actual weather, hand-built by people who consider
-  gravity a tax. Its residents keep **biosynthetic pets** — designed companions, gene-spliced
-  for beauty and loyalty and a carefully bounded amount of cleverness.
+  gravity a tax — and wrapped in as much automated security and habitat machinery as money can
+  buy, because the very rich are not relaxed people. Its residents keep **biosynthetic pets**:
+  designed companions, gene-spliced for beauty and loyalty and a carefully bounded amount of
+  cleverness.
 
 **What the player is told:** Umbilical Gamma has a problem. Cargo still ascends on schedule.
 Manifests still clear. But nothing comes *down* any more, Nirvana's comms have been reduced to
@@ -112,10 +114,16 @@ owners were. Nirvana is not silent because it was evacuated. It is silent becaus
 lived there are no longer the ones answering.
 
 **The conflict this sets up** is the spine of the whole design: **machines against the grown.**
-The player is a person made mostly of chrome, carrying tools built to talk to networks — spikes,
-EMPs, trace-scrubbers, every one of them an argument with a machine. None of it works on
-something that was grown instead of built. Act I teaches the player to think like a machine.
-Act III introduces them to the thing that doesn't.
+The player is a person made mostly of machinery, carrying tools built to talk to networks —
+spikes, EMPs, trace-scrubbers, every one of them an argument with a machine. None of it works on
+something grown instead of built. Act I teaches the player to think like a machine; Act III
+introduces them to the thing that doesn't.
+
+And Nirvana is not a clean swap. Its machines are all still up there, still running the orders
+they were given before anything went wrong — the station's security never stopped working, it
+just stopped being the only thing giving it instructions. Eleven weeks of a still-evolving
+intelligence learning its way into the systems around it means Act III is a *three-way* problem:
+the station's machinery, the things that have been getting into it, and you (§6.6).
 
 Tone: not comedic, not nihilist. Baseline is grimy and neon-lit and full of people trying to
 make rent. The biosynths are not monsters — they are the most sympathetic faction in the game,
@@ -139,7 +147,7 @@ Twelve tiers, three acts of four. You go **up**. Boss on the last tier of each a
 | --- | --- | --- | --- | --- |
 | **I — Baseline** | 1–4 | Arcology undersides, freight yards, loading gantries at the tether's foot | Sodium orange, rust, wet concrete | Human pickers, dock machinery, private security. Chaotic, weak, numerous — and one thing that shouldn't be here |
 | **II — The Climb** | 5–8 | Container stacks, hauler spines, maintenance crawl, hard vacuum on the other side of the plating | Steel, warning-stripe amber, black sky | Machines almost exclusively. Automated, coordinated, unbothered. Ciphers riding maintenance rigs |
-| **III — Nirvana** | 9–12 | Gardens, habitat rings, the residences. Blood in a beautiful room | Acid green, soft daylight, magenta | Biosynths. Coordinated, silent, and not wrong about anything |
+| **III — Nirvana** | 9–12 | Gardens, habitat rings, the residences. Blood in a beautiful room | Acid green, soft daylight, magenta | Biosynths, *and* the station's own security still running on standing orders — increasingly with something else's hand on it (§6.6) |
 
 The palette inversion in Act III is deliberate: after eight tiers of industrial grime the game
 gets *prettier*, and that is when it becomes most dangerous.
@@ -281,7 +289,39 @@ from tier 2 onward. It is the only enemy in Act I your EMP does nothing to, and 
 that follows you through walls. It is the whole reveal, placed where a player will feel it eight
 tiers before they are told it.
 
-### 6.6 Resources
+### 6.6 Subversion — how the grown got into the machines
+
+**Nirvana's machines were there first.** Station security, habitat maintenance, the residences'
+own systems: all installed years before the pets woke up, all still running, still executing
+standing orders to protect residents who are no longer alive to be protected. Nothing about Act
+III turns off the player's machine-facing kit.
+
+What changed is *who the machines are listening to*. Eleven weeks is a long time for something
+that is still evolving, and the biosynths have spent it learning their way inside.
+
+A **suborned** machine is still a machine — spikeable, EMP-able, it still leaks Trace when it
+dies. Three things are different:
+
+| | Clean machine | Suborned machine |
+| --- | --- | --- |
+| Finds you by | Sight, and the security net | Sight, the net, **and any biosynth that has your scent** |
+| Break line of sight | It loses you | **It doesn't.** It never saw you; something else did and told it |
+| Spike success | 85% | **55%** — you are arguing with something already inside |
+
+**The escalation is literal.** The share of a tier's machines already got into climbs as you
+ascend Nirvana: 20% on tier 9, 40%, 65%, and 85% on the Firstborn's own deck. It never reaches
+100% — something mechanical is always still answering the station, and that matters, because it
+means the player's kit never becomes decoration.
+
+**Counter-subversion is the machine build's job in Act III.** Kill every biosynth on a tier and
+the machines revert to standing orders on the spot, with a log line saying so. A spike-heavy
+player is not a passenger in Nirvana — they are the one who can *clear* a tier's systems, and
+the price of doing it is killing the faction the story has spent three acts making sympathetic.
+
+That price is the point. Act III does not ask the player to stop using their tools. It asks
+them what those tools are for.
+
+### 6.7 Resources
 
 Four, deliberately few:
 
@@ -293,7 +333,7 @@ Four, deliberately few:
 - **CREDITS.** Spent only at Waystation vendors and black-market terminals. Deliberately *not*
   a mid-floor resource, so picking up cash is never a tactical decision — it's just a reward.
 
-### 6.7 Grafts — the build system
+### 6.8 Grafts — the build system
 
 Six slots. This is the primary progression axis and the primary source of interesting decisions.
 
@@ -322,7 +362,7 @@ are visibly consuming the player character, and the game shows it by *lying to t
 interface*. Grafts can be uninstalled at the Waystation for credits, which is the pressure valve —
 the Act II Waystation is where players choose whether to walk it back before Nirvana.
 
-### 6.8 Combat
+### 6.9 Combat
 
 Three verbs, all viable as a primary:
 
@@ -351,7 +391,7 @@ work*, which is the point (§6.5).
 **Armor** subtracts flat damage (not a %). Flat armor is legible at a glance and makes small
 attacks meaningfully worthless, which pushes build climbersity.
 
-### 6.9 Items and economy
+### 6.10 Items and economy
 
 Standard roguelike unidentified-item tension, reskinned: **graft chips ship unlabelled**. A
 found ampoule might be a heal or might be a hallucinogen. Identify by using it, by paying a
@@ -364,7 +404,7 @@ stimulant), **Power Cell** (recharge), **Signal Scrub** (zero Trace), **EMP Char
 Weapons carry **one modifier** at most, not a stack of affixes. "Kessel-Ohara Shock Baton
 (Stun)" is a whole item. Deep affix systems don't survive on a 6" screen.
 
-### 6.10 Level generation
+### 6.11 Level generation
 
 Per-act generators, not one generator with a reskin:
 
@@ -375,13 +415,15 @@ Per-act generators, not one generator with a reskin:
   Cameras sit on junctions on purpose.
 - **Act III — Habitat rings.** Open gardens and residences, curved corridors, few hard walls
   — and the Firstborn can seal and vent sections, so the route you memorised stops existing.
-  Cover is scarce by design: the act that punishes cover-thinking does not provide much.
+  Cover is scarce by design: the act that punishes cover-thinking does not provide much. The
+  residences' own turrets and maintenance drones are still mounted where the architects put
+  them, which is why a machine-facing build still has targets here.
 
 Every tier guarantees: 1 lift, 1 terminal (POWER + a floor map fragment), 2–4 loot rooms,
 1 optional high-risk vault (locked, loud to force, good grafts inside). Guaranteed
 connectivity is verified by a flood fill at generation time; a floor that fails regenerates.
 
-### 6.11 Enemy roster
+### 6.12 Enemy roster
 
 **F** = family. Machine (M), Biosynth (B), Human (H).
 
@@ -395,6 +437,8 @@ connectivity is verified by a flood fill at generation time; a floor that fails 
 | Hauler Rig | II | M | Slow, armoured, blocks corridors. Not a fight — an obstacle with opinions |
 | Cipher | II | H | Spikes *you*: drains POWER, locks your systems, raises your Instability |
 | Sentry Pack | II | M | Fast, flanks, coordinates. The machine version of a hunting pack |
+| Habitat Drone | III | M | Nirvana's own maintenance, still doing its rounds. Frequently suborned |
+| Estate Turret | III | M | A residence's private security, still guarding an owner who is dead |
 | Shed | III | B | Camouflaged; only visible in the turn it moves. Sight is no longer your ally |
 | Household | III | B | The merged servant-biosynths of one residence. Slow, enormous, grieving |
 | Regrowth | III | B | Killing the body does not kill it. It comes back from what you left |
@@ -403,7 +447,12 @@ connectivity is verified by a flood fill at generation time; a floor that fails 
 The Act III roster is deliberately *less* varied than Act II's and more coherent. Machines are a
 junk drawer of unrelated tools; the biosynths are one thing, and they act like it.
 
-### 6.12 Between runs — meta-progression
+The two Act III machines are not filler. They are the reason a spike loadout still functions in
+Nirvana, they are what subversion (§6.6) acts *on*, and the sight of a residence's own turret
+firing on the residence's own pets — until the pets get into it — is most of what Act III has to
+say, delivered without a line of dialogue.
+
+### 6.13 Between runs — meta-progression
 
 Death is not a total loss but it is a real one. You extract **Salvage** proportional to the tier
 you reached and what you recorded on the way. Spend it at your broker's bar, back down in
@@ -534,13 +583,14 @@ overruling.
 3. **12 tiers may be too short for the graft system to breathe.** Instability tiers want more
    installs than 12 tiers will drop. *Recommendation:* ship the slice, measure, and if it's
    thin, add tiers to Act II rather than lengthening runs uniformly.
-4. **Act III risks making the player's whole kit dead weight at once.** If spikes, EMPs and
-   Trace-scrubbing all stop mattering on tier 9, a spike-heavy build does not get a harder
-   act — it gets four tiers of holding a useless controller. *Recommendation:* Nirvana keeps a
-   thin machine presence (habitat maintenance, the residences' own security, still running with
-   nobody to protect) so a machine-facing build has *something* to do, and the Waystation before
-   Act III is where the game makes very sure the player knows what is coming. This is the
-   biggest open risk in the redesign and it needs a playtest, not an argument.
+4. ~~**Act III risks making the player's whole kit dead weight at once.**~~ **Resolved, and
+   better than the recommendation.** Nirvana's machines were always there — the very rich buy a
+   great deal of security — and they are still running their standing orders. What the biosynths
+   have been doing for eleven weeks is *learning their way into them*. So Act III is a three-way
+   problem rather than a swap, a machine-facing build keeps a real job (counter-subversion
+   clears a tier's systems outright), and the reason cover stops working is not "the rules
+   changed" but "something is telling the machines where you are". Specced in §6.6 and
+   implemented in `sim/suborn.ts` with tests; not reachable in the Act I slice by play.
 5. **The biosynths are the sympathetic faction, and the game is still mostly about killing
    them.** That is either the point or a problem, depending on execution. *Recommendation:*
    commit to it — the Firstborn stops if you stop, and that option existing from tier 9 onward
@@ -573,6 +623,7 @@ it **feels**, not for what it references:
 | Implants | **Grafts** | Surgical, bodily, faintly wrong. They are attached to you, not integrated |
 | Implant corruption | **Instability** → Static / Dissonance / Fracture / **Dissolution** | An escalating vocabulary of a signal degrading, ending in the thing coming apart |
 | The machine/grown split | **Family**: machine, biosynth, human | The one word that decides which of your tools work |
+| A machine they got into | **Suborned** | Not "hacked" or "corrupted" — suborned means persuaded to betray a duty it still nominally holds, which is exactly what happened |
 | Anti-biosynth consumable | **Scent Baffle** | Mirrors the Signal Scrub exactly: one sheds the net, one sheds the nose |
 | Intrusion programs | **Spikes** | Short, verb-able ("spike it"), and fits a 26px action-bar slot |
 | Individual spikes | Overload / Lockout / Dazzle / Turncoat / Sounding / Null Signal | Each says its own effect |

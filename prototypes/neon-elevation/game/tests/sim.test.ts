@@ -8,6 +8,9 @@ import {
 import { damageMultiplier, tierFor, TIER_WARNING } from '../src/sim/grafts.ts';
 import { createWorld, deserialize, makeActor, serialize, player } from '../src/sim/world.ts';
 import { execute } from '../src/sim/turn.ts';
+import {
+  releaseSuborned, spikeSuccessChance, subversionRate,
+} from '../src/sim/suborn.ts';
 import { ACTORS } from '../src/content/actors.ts';
 import { GRAFTS, ITEMS, SPIKES, SPIKE_KINDS } from '../src/content/items.ts';
 import { SPRITES } from '../src/render/sprites.ts';
@@ -301,6 +304,84 @@ describe('machine vs biosynth', () => {
     world.player.inventory.push(baffle);
     execute(world, { kind: 'use', itemId: baffle.id });
     expect(stray.scented, 'a baffle should shed the trail').toBe(false);
+  });
+});
+
+/**
+ * Subversion is Act III machinery, so the slice cannot reach it by playing.
+ * That makes tests the only thing standing between it and rotting — every rule
+ * in DESIGN.md §6.6 is asserted here rather than promised in prose.
+ */
+describe('suborned machines', () => {
+  it('leaves Baseline and the Climb entirely alone', () => {
+    for (const floor of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      expect(subversionRate(floor), `tier ${floor}`).toBe(0);
+    }
+  });
+
+  it('escalates across Nirvana as the biosynths get better at it', () => {
+    const rates = [9, 10, 11, 12].map(subversionRate);
+    for (let i = 1; i < rates.length; i++) {
+      expect(rates[i], `tier ${9 + i}`).toBeGreaterThan(rates[i - 1]);
+    }
+    expect(rates[0]).toBeGreaterThan(0);
+    expect(rates.at(-1)).toBeLessThan(1); // never all of it: some machine is always still the station's
+  });
+
+  it('hands a suborned machine your position when anything grown has your scent', () => {
+    const world = createWorld('suborn-relay');
+    const p = player(world);
+    const drone = makeActor(world, 'dockdrone', p.x + 5, p.y + 5);
+    const stray = makeActor(world, 'stray', p.x + 1, p.y);
+    drone.suborned = true;
+    // Wall the drone off completely — it cannot possibly see the player.
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx || dy) world.tiles[(drone.y + dy) * world.w + (drone.x + dx)] = 0;
+      }
+    }
+    execute(world, { kind: 'wait' });
+    expect(stray.scented, 'the stray should have the scent').toBe(true);
+    expect(drone.aware, 'the relay lags a turn: nothing to pass on yet').toBe(false);
+
+    execute(world, { kind: 'wait' });
+    expect(drone.aware, 'a suborned machine is told, it does not need to see').toBe(true);
+  });
+
+  it('leaves an unsuborned machine blind behind the same wall', () => {
+    const world = createWorld('suborn-control');
+    const p = player(world);
+    const drone = makeActor(world, 'dockdrone', p.x + 5, p.y + 5);
+    makeActor(world, 'stray', p.x + 1, p.y);
+    drone.suborned = false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx || dy) world.tiles[(drone.y + dy) * world.w + (drone.x + dx)] = 0;
+      }
+    }
+    execute(world, { kind: 'wait' });
+    execute(world, { kind: 'wait' });
+    expect(drone.aware, 'a clean machine still has to see you').toBe(false);
+  });
+
+  it('makes spiking a suborned machine harder, never impossible', () => {
+    const clean = { suborned: false } as never;
+    const held = { suborned: true } as never;
+    expect(spikeSuccessChance(held)).toBeLessThan(spikeSuccessChance(clean));
+    expect(spikeSuccessChance(held)).toBeGreaterThan(0.3);
+  });
+
+  it('reverts every machine when the last biosynth on the tier dies', () => {
+    const world = createWorld('counter-subversion');
+    const p = player(world);
+    const drone = makeActor(world, 'dockdrone', p.x + 4, p.y);
+    drone.suborned = true;
+    const stray = makeActor(world, 'stray', p.x + 1, p.y);
+    stray.hp = 1;
+
+    expect(releaseSuborned(world), 'not while one is alive').toBe(0);
+    execute(world, { kind: 'step', x: stray.x, y: stray.y });
+    expect(drone.suborned, 'nothing left whispering to it').toBe(false);
   });
 });
 

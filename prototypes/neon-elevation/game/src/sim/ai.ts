@@ -21,6 +21,16 @@ export interface AiContext {
   events: SimEvent[];
   /** Distance-to-player field, computed once per round and shared by all actors. */
   toPlayer: Int32Array;
+  /**
+   * Whether anything grown had the player's scent at the *start* of this round.
+   *
+   * Snapshotted rather than read live, for the same reason the flow field is:
+   * otherwise whether a suborned machine gets told depends on where its owner
+   * happens to sit in the actor array, which is an ordering artifact and not a
+   * rule. The one-turn lag it introduces is also the truthful reading — the
+   * pack has to smell you before it can pass that on.
+   */
+  scentRelay: boolean;
 }
 
 function sees(world: World, actor: Actor, target: Actor): boolean {
@@ -108,6 +118,17 @@ function updateAwareness(ctx: AiContext, actor: Actor, target: Actor): void {
       actor.lastKnownY = target.y;
       log(ctx.world, `${actor.name} HAS YOUR SCENT.`, 'bad');
     }
+    return;
+  }
+
+  // A machine the biosynths have got into does not need to see you: something
+  // with your scent is telling it where you are. This is the moment Act I's
+  // lesson about cover stops paying, and it is a machine that teaches it.
+  if (actor.suborned && ctx.scentRelay) {
+    if (!actor.aware) log(ctx.world, `${actor.name} TURNS. SOMETHING TOLD IT.`, 'bad');
+    actor.aware = true;
+    actor.lastKnownX = target.x;
+    actor.lastKnownY = target.y;
     return;
   }
 

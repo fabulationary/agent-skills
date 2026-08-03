@@ -5,7 +5,7 @@ Playable prototype. TypeScript + canvas, no runtime dependencies, no external as
 ```bash
 npm install
 npm run dev        # http://localhost:5173 — resize the window narrow to see portrait
-npm test           # 43 tests: FOV symmetry, mapgen properties, determinism, the family rule, palette lint
+npm test           # 49 tests: FOV symmetry, mapgen properties, determinism, the family and subversion rules, palette lint
 npm run balance    # headless bot plays 250 runs and reports the distributions
 npm run build      # typecheck + bundle (currently 21.5 KB gzipped)
 ```
@@ -32,6 +32,7 @@ tapping yourself jacks in for POWER and a map fragment.
 - Trace clock: all five states, escalating waves, the Hunter-Killer at PURGE
 - Combat: melee, SMG with a Trace bill per shot, three spikes, flat armor
 - **The family rule** (DESIGN.md §6.5): machines are spikeable, EMP-able, leak Trace when killed, and lose you when you break line of sight. Biosynths are none of those — they track by scent through walls and never forget, and only a Scent Baffle sheds them
+- **Subversion** (DESIGN.md §6.6, `sim/suborn.ts`): Nirvana's machines were always there and never stop working — but the biosynths have been getting into them, at a rate that climbs from 20% to 85% across Act III. A suborned machine is fed your position by anything with your scent (so cover stops paying), costs 55% instead of 85% to spike, and reverts the moment the last biosynth on the tier dies. Implemented and tested; not reachable by play in the Act I slice
 - Enemies: picker (flees and fetches friends), dock drone (explodes), grafted, dock turret, **stray** (the Act I biosynth, and the whole Act III reveal placed eight tiers early), sec-drone, Hunter-Killer, and THE WARDEN in a gantried loading bay on tier 4
 - Grafts: 12 implants across 6 slots, Instability tiers with the FRACTURE glitches wired to the renderer, and an install screen that states the consequence before you accept it
 - Items: 7 kinds including the Scent Baffle, unidentified graft chips and ampoules

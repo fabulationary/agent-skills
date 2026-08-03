@@ -16,6 +16,9 @@ import {
 } from './grafts.ts';
 import { applyDamage, playerMeleeDamage, playerRangedDamage } from './combat.ts';
 import {
+  anyBiosynthHasScent, releaseSuborned, spikeSuccessChance,
+} from './suborn.ts';
+import {
   addTrace, decayOnAscent, stateFor, waveInterval,
   TRACE_ON_FAILED_SPIKE, TRACE_ON_INSTALL, TRACE_ON_SPLICE,
   TRACE_ON_NETWORKED_KILL, TRACE_ON_SHOT, TRACE_PER_TURN,
@@ -79,6 +82,16 @@ function reapDead(world: World, events: SimEvent[]): void {
     }
   }
   world.actors = world.actors.filter((a) => a.faction === 'player' || a.hp > 0);
+
+  // Kill the last of the grown on a tier and the machines fall back to their
+  // standing orders. Counter-subversion is a real strategy — and the price of
+  // it is the whole moral weight of Act III.
+  const freed = releaseSuborned(world);
+  if (freed > 0) {
+    log(world, freed === 1
+      ? 'ONE SYSTEM REVERTS. NOTHING LEFT WHISPERING.'
+      : `${freed} SYSTEMS REVERT. NOTHING LEFT WHISPERING.`, 'good');
+  }
 }
 
 /** HUNT+ spawns reinforcements at the floor edge, walking in from off-view. */
@@ -217,12 +230,15 @@ function playerSpike(world: World, spikeKind: SpikeKind, targetId: number, event
     }
   }
 
-  const success = streams.combat.chance(0.85);
+  // Arguing with a machine that already has something else inside it.
+  const success = streams.combat.chance(spikeSuccessChance(target));
   events.push({ t: 'spike', id: p.id, targetId: target.id, spike: spikeKind, ok: success });
 
   if (!success) {
     addTrace(world, TRACE_ON_FAILED_SPIKE);
-    log(world, `${template.name} BOUNCED. THEY FELT THAT.`, 'bad');
+    log(world, target.suborned
+      ? `${template.name} BOUNCED. SOMETHING ELSE HOLDS IT.`
+      : `${template.name} BOUNCED. THEY FELT THAT.`, 'bad');
   } else {
     switch (spikeKind) {
       case 'overload':
@@ -416,7 +432,13 @@ function endOfPlayerTurn(world: World, events: SimEvent[]): void {
 function runScheduler(world: World, events: SimEvent[]): void {
   const streams = streamsFor(world);
   const field = buildFlowField(world);
-  const ctx = { world, rng: streams.ai, events, toPlayer: field };
+  const ctx = {
+    world,
+    rng: streams.ai,
+    events,
+    toPlayer: field,
+    scentRelay: anyBiosynthHasScent(world),
+  };
 
   // Enemy energy accrues relative to the player's speed, so Reflex Tendons and
   // Slipstream buy real extra turns rather than a cosmetic stat.

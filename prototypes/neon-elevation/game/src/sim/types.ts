@@ -30,6 +30,10 @@ export type Faction = 'player' | 'hostile';
  *
  * Every tool in the game is good against exactly one of these. That is the
  * point: your loadout is an argument about which enemy you expect.
+ *
+ * The two families are not sealed off from each other. Nirvana Station's
+ * machines have been running since before the pets woke up, and the biosynths
+ * have spent eleven weeks learning to get inside them — see `suborned`.
  */
 export type Family = 'human' | 'machine' | 'biosynth';
 
@@ -64,6 +68,7 @@ export interface Actor {
   status: Status;
   aware: boolean;         // has noticed the player (drives the threat outline)
   scented: boolean;       // biosynth only: has your scent, and will not lose it
+  suborned: boolean;      // machine only: a biosynth has gotten inside it (§6.5)
   fleeing: boolean;
   lastKnownX: number;
   lastKnownY: number;
