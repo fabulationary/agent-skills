@@ -9,18 +9,21 @@
  */
 
 import { DIRS, dist } from '../core/grid.ts';
-import { CHROME, HACKS, ITEMS } from '../content/items.ts';
+import { GRAFTS, SPIKES, ITEMS } from '../content/items.ts';
 import { buildFlowField, takeTurn } from './ai.ts';
 import {
-  canDescend, hackCost, install, passiveTracePerTurn, speedBonus, tierFor,
-} from './chrome.ts';
+  canDescend, spikeCost, install, passiveTracePerTurn, speedBonus, tierFor,
+} from './grafts.ts';
 import { applyDamage, playerMeleeDamage, playerRangedDamage } from './combat.ts';
 import {
   addTrace, decayOnDescent, stateFor, waveInterval,
-  TRACE_ON_FAILED_HACK, TRACE_ON_INSTALL, TRACE_ON_JACKIN,
+  TRACE_ON_FAILED_SPIKE, TRACE_ON_INSTALL, TRACE_ON_SPLICE,
   TRACE_ON_NETWORKED_KILL, TRACE_ON_SHOT, TRACE_PER_TURN,
 } from './trace.ts';
-import { Tile, type Actor, type Intent, type SimEvent, type World } from './types.ts';
+import {
+  Tile,
+  type Actor, type Intent, type SimEvent, type SpikeKind, type World,
+} from './types.ts';
 import {
   actorAt, buildFloor, FINAL_FLOOR, isWalkable, itemAt, log,
   makeActor, player, saveStreams, streamsFor, tileAt, updateFov,
@@ -50,8 +53,8 @@ function killActor(world: World, actor: Actor, events: SimEvent[]): void {
       if (other.faction === 'player') log(world, `THE BLAST CATCHES YOU FOR ${res.dealt}.`, 'bad');
     }
   }
-  // Blood Pump: the chrome that makes killing sustainable.
-  if (Object.values(world.player.chrome).some((c) => c?.kind === 'bloodpump')) {
+  // Leech Valve: the graft that makes killing sustainable.
+  if (Object.values(world.player.grafts).some((c) => c?.kind === 'leechvalve')) {
     const p = player(world);
     p.hp = Math.min(p.maxHp, p.hp + 6);
   }
@@ -115,9 +118,9 @@ function spawnWave(world: World, events: SimEvent[]): void {
 function playerMelee(world: World, target: Actor, events: SimEvent[]): void {
   const streams = streamsFor(world);
   const p = player(world);
-  const monowire = Object.values(world.player.chrome).some((c) => c?.kind === 'monowire');
+  const ribbonedge = Object.values(world.player.grafts).some((c) => c?.kind === 'ribbonedge');
 
-  const targets = monowire
+  const targets = ribbonedge
     ? world.actors.filter((a) => a.faction === 'hostile' && a.hp > 0 && dist(a, p) === 1)
     : [target];
 
@@ -171,10 +174,10 @@ function playerShoot(world: World, target: Actor, events: SimEvent[]): boolean {
   return true;
 }
 
-function playerHack(world: World, hackKind: string, targetId: number, events: SimEvent[]): boolean {
+function playerSpike(world: World, spikeKind: SpikeKind, targetId: number, events: SimEvent[]): boolean {
   const p = player(world);
-  const template = HACKS[hackKind];
-  const cost = hackCost(world.player, template.power);
+  const template = SPIKES[spikeKind];
+  const cost = spikeCost(world.player, template.power);
   if (world.player.power < cost) {
     log(world, 'NOT ENOUGH POWER.', 'bad');
     events.push({ t: 'blocked' });
@@ -183,7 +186,7 @@ function playerHack(world: World, hackKind: string, targetId: number, events: Si
 
   let target = world.actors.find((a) => a.id === targetId);
   if (!target || target.hp <= 0) return false;
-  if (!target.hackable) {
+  if (!target.breachable) {
     log(world, `${target.name} HAS NOTHING TO TALK TO.`, 'bad');
     events.push({ t: 'blocked' });
     return false;
@@ -197,35 +200,35 @@ function playerHack(world: World, hackKind: string, targetId: number, events: Si
   const streams = streamsFor(world);
   world.player.power -= cost;
 
-  // DISSONANCE and above: the hack sometimes picks its own target. The player
-  // was told this would happen when they installed the chrome.
+  // DISSONANCE and above: the spike sometimes picks its own target. The player
+  // was told this would happen when they installed the grafts.
   if (tierFor(world.player.instability) !== 'CLEAN' &&
       world.player.instability >= 40 && streams.combat.chance(0.05)) {
-    const others = world.actors.filter((a) => a.hackable && a.hp > 0 && a.id !== target!.id);
+    const others = world.actors.filter((a) => a.breachable && a.hp > 0 && a.id !== target!.id);
     if (others.length) {
       target = streams.combat.pick(others);
-      log(world, 'THE HACK PICKS ITS OWN TARGET.', 'bad');
+      log(world, 'THE SPIKE PICKS ITS OWN TARGET.', 'bad');
       events.push({ t: 'glitch', severity: 2 });
     }
   }
 
   const success = streams.combat.chance(0.85);
-  events.push({ t: 'hack', id: p.id, targetId: target.id, hack: hackKind, ok: success });
+  events.push({ t: 'spike', id: p.id, targetId: target.id, spike: spikeKind, ok: success });
 
   if (!success) {
-    addTrace(world, TRACE_ON_FAILED_HACK);
+    addTrace(world, TRACE_ON_FAILED_SPIKE);
     log(world, `${template.name} BOUNCED. THEY FELT THAT.`, 'bad');
   } else {
-    switch (hackKind) {
-      case 'overheat':
+    switch (spikeKind) {
+      case 'overload':
         target.status.burn = 4;
         log(world, `${target.name} IS COOKING.`, 'good');
         break;
-      case 'lock':
+      case 'lockout':
         target.status.lock = 3;
         log(world, `${target.name} LOCKS UP.`, 'good');
         break;
-      case 'blind':
+      case 'dazzle':
         target.status.blind = 6;
         target.aware = false;
         log(world, `${target.name} IS BLIND.`, 'good');
@@ -245,17 +248,17 @@ function useItem(world: World, itemId: number, events: SimEvent[]): boolean {
   let consumed = true;
 
   switch (item.kind) {
-    case 'medkit':
+    case 'patchkit':
       p.hp = Math.min(p.maxHp, p.hp + 35);
-      log(world, 'TRAUMA KIT. THE BLEEDING STOPS.', 'good');
+      log(world, 'PATCH KIT. THE BLEEDING STOPS.', 'good');
       break;
     case 'powercell':
       world.player.power = Math.min(world.player.maxPower, world.player.power + 40);
       log(world, 'CELL DRAINED INTO YOUR RIG.', 'good');
       break;
-    case 'ghostshunt':
+    case 'scrub':
       world.trace = 0;
-      log(world, 'GHOST SHUNT. YOU FALL OFF THE NET.', 'good');
+      log(world, 'SIGNAL SCRUB. YOU FALL OFF THE NET.', 'good');
       break;
     case 'emp': {
       let hit = 0;
@@ -268,24 +271,24 @@ function useItem(world: World, itemId: number, events: SimEvent[]): boolean {
       log(world, hit ? `EMP. ${hit} SYSTEMS DOWN.` : 'EMP. NOTHING NETWORKED IN SIGHT.', hit ? 'good' : 'info');
       break;
     }
-    case 'stim': {
+    case 'ampoule': {
       // Unidentified until used — the classic tension, reskinned.
       const good = streams.loot.chance(0.6);
-      world.player.identified.stim = true;
+      world.player.identified.ampoule = true;
       if (good) {
         p.hp = Math.min(p.maxHp, p.hp + 12);
         world.player.power = Math.min(world.player.maxPower, world.player.power + 25);
-        log(world, 'COMBAT STIM. EVERYTHING SHARPENS.', 'good');
+        log(world, 'AMPOULE BURNS CLEAN. EVERYTHING SHARPENS.', 'good');
       } else {
         world.player.instability = Math.min(100, world.player.instability + 6);
-        log(world, 'BAD BATCH. YOUR CHROME SHUDDERS.', 'bad');
+        log(world, 'BAD BATCH. YOUR GRAFTS SHUDDER.', 'bad');
         events.push({ t: 'glitch', severity: 1 });
       }
       break;
     }
-    case 'chip': {
-      const kind = item.chromeKind!;
-      const chrome = CHROME[kind];
+    case 'graftchip': {
+      const kind = item.graftKind!;
+      const grafts = GRAFTS[kind];
       if (p.hp <= 16) {
         log(world, 'TOO WEAK FOR FIELD SURGERY.', 'bad');
         events.push({ t: 'blocked' });
@@ -298,7 +301,7 @@ function useItem(world: World, itemId: number, events: SimEvent[]): boolean {
       const res = install(world.player, kind);
       world.player.identified[kind] = true;
       if (res.ok) {
-        log(world, `INSTALLED ${chrome.name}.`, 'good');
+        log(world, `INSTALLED ${grafts.name}.`, 'good');
         if (res.replaced) log(world, `RIPPED OUT ${res.replaced}.`, 'info');
         const after = tierFor(world.player.instability);
         if (after !== before) {
@@ -315,21 +318,21 @@ function useItem(world: World, itemId: number, events: SimEvent[]): boolean {
   return consumed;
 }
 
-function jackIn(world: World, events: SimEvent[]): boolean {
+function spliceIn(world: World, events: SimEvent[]): boolean {
   const p = player(world);
   if (tileAt(world, p.x, p.y) !== Tile.Terminal) {
     events.push({ t: 'blocked' });
     return false;
   }
   world.player.power = Math.min(world.player.maxPower, world.player.power + 35);
-  addTrace(world, TRACE_ON_JACKIN);
+  addTrace(world, TRACE_ON_SPLICE);
   // Reveal a fragment of the floor plan: terminals are worth the detour.
   for (let i = 0; i < world.explored.length; i++) {
     const x = i % world.w;
     const y = Math.floor(i / world.w);
     if (dist({ x, y }, p) <= 12) world.explored[i] = 1;
   }
-  log(world, 'JACKED IN. POWER UP, FLOOR PLAN CACHED.', 'good');
+  log(world, 'SPLICED IN. POWER UP, FLOOR PLAN CACHED.', 'good');
   return true;
 }
 
@@ -389,7 +392,7 @@ function runScheduler(world: World, events: SimEvent[]): void {
   const ctx = { world, rng: streams.ai, events, toPlayer: field };
 
   // Enemy energy accrues relative to the player's speed, so Reflex Tendons and
-  // the Sandevistan buy real extra turns rather than a cosmetic stat.
+  // Slipstream buy real extra turns rather than a cosmetic stat.
   const tickScale = 100 / playerSpeed(world);
 
   for (const actor of [...world.actors]) {
@@ -471,16 +474,16 @@ export function execute(world: World, intent: Intent): SimEvent[] {
       break;
     }
 
-    case 'hack':
-      spentTurn = playerHack(world, intent.hack, intent.targetId, events);
+    case 'spike':
+      spentTurn = playerSpike(world, intent.spike, intent.targetId, events);
       break;
 
     case 'use':
       spentTurn = useItem(world, intent.itemId, events);
       break;
 
-    case 'jackin':
-      spentTurn = jackIn(world, events);
+    case 'splice':
+      spentTurn = spliceIn(world, events);
       break;
 
     case 'descend':

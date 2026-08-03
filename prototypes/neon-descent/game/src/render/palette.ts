@@ -1,5 +1,5 @@
 /**
- * SPRAWL-36 (ART-DIRECTION.md §1). Thirty-six colors, eight ramps, nothing else
+ * VERGE-36 (ART-DIRECTION.md §1). Thirty-six colors, eight ramps, nothing else
  * ships. Color is semantic: BLOOD only ever means threat, ACID only ever means
  * data. The palette is a language the player learns in Act I.
  */
@@ -15,7 +15,7 @@ export const P: Record<string, string> = {
   l: '#06323f', m: '#0c6f80', n: '#1fc3d6', o: '#7df2ff',
   // MAGENTA — you
   p: '#46082f', q: '#9b1067', r: '#ee2b8e', s: '#ff8ecd',
-  // ACID — hacking, ICE, power
+  // ACID — intrusion, data, power
   t: '#0b3418', u: '#1c8038', v: '#46dc63', w: '#b2ffbc',
   // SODIUM — hazard, fire
   x: '#45210a', y: '#9c5010', z: '#ee9320', A: '#ffcf78',

@@ -29,7 +29,7 @@ interface RunResult {
   killedBy: string;
   kills: number;
   instability: number;
-  chrome: number;
+  grafts: number;
   itemsUsed: Record<string, number>;
   traceAtDescent: number[];
 }
@@ -75,16 +75,16 @@ function playRun(seed: string): RunResult {
 
     // Heal when badly hurt.
     if (p.hp < p.maxHp * 0.35) {
-      const kit = world.player.inventory.find((i) => i.kind === 'medkit');
+      const kit = world.player.inventory.find((i) => i.kind === 'patchkit');
       if (kit) {
-        itemsUsed.medkit = (itemsUsed.medkit ?? 0) + 1;
+        itemsUsed.patchkit = (itemsUsed.patchkit ?? 0) + 1;
         advance({ kind: 'use', itemId: kit.id });
         continue;
       }
     }
 
     // Install any chip found, to exercise the Instability curve.
-    const chip = world.player.inventory.find((i) => i.kind === 'chip');
+    const chip = world.player.inventory.find((i) => i.kind === 'graftchip');
     if (chip && p.hp > p.maxHp * 0.5) {
       itemsUsed.chip = (itemsUsed.chip ?? 0) + 1;
       advance({ kind: 'use', itemId: chip.id });
@@ -116,7 +116,7 @@ function playRun(seed: string): RunResult {
 
     // Detour for loot that is close and safe to grab. Without this the bot
     // beelines the elevator, never picks up a chip, and the harness silently
-    // reports zero chrome — measuring nothing about the game's main progression
+    // reports zero grafts — measuring nothing about the game's main progression
     // system while looking like it measured everything.
     if (!hunted && world.trace < 60) {
       const loot = world.items
@@ -161,7 +161,7 @@ function playRun(seed: string): RunResult {
     killedBy: world.dead ? killedBy : world.won ? 'extracted' : 'timeout',
     kills: world.player.kills,
     instability: world.player.instability,
-    chrome: Object.keys(world.player.chrome).length,
+    grafts: Object.keys(world.player.grafts).length,
     itemsUsed,
     traceAtDescent,
   };
@@ -214,7 +214,7 @@ function main(): void {
   console.log(`\n  win rate            ${((wins / runs) * 100).toFixed(1)}%`);
   console.log(`  median turns/run    ${median(results.map((r) => r.turns))}`);
   console.log(`  median kills/run    ${median(results.map((r) => r.kills))}`);
-  console.log(`  median chrome       ${median(results.map((r) => r.chrome))}`);
+  console.log(`  median grafts       ${median(results.map((r) => r.grafts))}`);
   console.log(`  median instability  ${median(results.map((r) => r.instability))}`);
   console.log(`  median trace at descent ${median(allDescentTrace)}`);
 

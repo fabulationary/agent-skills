@@ -170,7 +170,7 @@ export function takeTurn(ctx: AiContext, actor: Actor): void {
           actor.fleeing = true;
           log(world, `${actor.name} BREAKS AND RUNS.`, 'good');
         }
-        // Fleeing scavs fetch friends: everything they pass gets woken.
+        // Fleeing pickers fetch friends: everything they pass gets woken.
         for (const other of world.actors) {
           if (other.faction === 'hostile' && other.hp > 0 && dist(other, actor) <= 4) {
             other.aware = true;

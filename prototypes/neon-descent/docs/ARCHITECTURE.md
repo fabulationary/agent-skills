@@ -90,13 +90,13 @@ src/
 │   ├── path.ts              #   A* + Dijkstra maps for AI
 │   ├── combat.ts            #   Damage, armor, accuracy
 │   ├── trace.ts             #   Trace accrual + escalation state machine
-│   ├── chrome.ts            #   Slots, Instability tiers
+│   ├── grafts.ts            #   Slots, Instability tiers
 │   ├── items.ts             #   Inventory, identification, use effects
 │   ├── ai/                  #   One file per behavior tree; no per-enemy special cases
 │   └── mapgen/              #   act1-caves.ts, act2-bsp.ts, act3-stack.ts, prefabs.ts, validate.ts
 │
 ├── content/                 # Data, not code. Tables only, no logic.
-│   ├── tiles.ts  actors.ts  weapons.ts  chrome.ts  quickhacks.ts  items.ts
+│   ├── tiles.ts  actors.ts  weapons.ts  grafts.ts  spikes.ts  items.ts
 │   └── prefabs/*.json
 │
 ├── render/                  # Reads world state. Never mutates it.
@@ -111,7 +111,7 @@ src/
 │   ├── dpad.ts              #   Alternate source, emits identical Intents
 │   └── intent.ts            #   Gesture + UI state → Intent
 │
-├── ui/                      # Panels: inventory, chrome install, vendor, pause, death
+├── ui/                      # Panels: inventory, graft install, vendor, pause, death
 ├── platform/                # storage.ts · haptics.ts · lifecycle.ts — the only Capacitor imports
 └── main.ts                  # Composition root and frame loop
 ```
@@ -235,7 +235,7 @@ descend when Trace > 60) plays 1,000 runs nightly in CI and reports:
 - depth-reached histogram and win rate
 - death-cause distribution — if any one enemy causes >25% of deaths, that's a balance bug
 - median turns per floor, and Trace state at descent
-- chrome install rate and Instability distribution at death
+- graft install rate and Instability distribution at death
 - items that are never picked up (dead content) and items picked up >90% of the time (mandatory content, which means it isn't a choice)
 
 Regressions in these distributions fail CI. This is how a one-person-scale project keeps a
@@ -294,7 +294,7 @@ the atlas, so text is pixel-exact at every integer scale.
 - **Back button:** cancel targeting → close top panel → pause menu. Never exits the app on the
   first press, never mid-turn
 - `appStateChange` → flush save, pause animation clock, mute audio
-- minSdk 26 (Android 8.0). Hardware acceleration on; WebView is a Chrome dependency, so no
+- minSdk 26 (Android 8.0). Hardware acceleration on; WebView is a Grafts dependency, so no
   legacy WebView quirks below that line
 - Permissions requested: **none**. No network, no storage, no analytics SDK in v1. A
   single-player offline roguelike has no honest reason to ask for anything, and shipping with
@@ -336,7 +336,7 @@ runnable — no step is "build the framework."
 4. **Combat + items + inventory UI.** Melee, one gun, consumables, the portrait inventory panel.
 5. **Trace.** The clock, the 5 states, the Hunter-Killer. *This is the earliest point the game
    is worth playtesting for fun rather than for bugs.*
-6. **Chrome + Instability.** Install flow, 8 implants, tier effects.
+6. **Grafts + Instability.** Install flow, 8 implants, tier effects.
 7. **The Warden.** Boss encounter, floor-4 arena prefab.
 8. **Save/restore, autosave, back-button handling, death → meta screen.** Closes the loop.
 9. **Capacitor wrap, on-device profiling, first APK.**

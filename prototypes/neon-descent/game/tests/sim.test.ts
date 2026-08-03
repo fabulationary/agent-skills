@@ -3,9 +3,11 @@ import { vectorToDir } from '../src/core/grid.ts';
 import { RNG, streamFor } from '../src/core/rng.ts';
 import { canStep, findPath } from '../src/sim/path.ts';
 import { stateFor, STATE_RANK, waveInterval } from '../src/sim/trace.ts';
-import { damageMultiplier, tierFor, TIER_WARNING } from '../src/sim/chrome.ts';
+import { damageMultiplier, tierFor, TIER_WARNING } from '../src/sim/grafts.ts';
 import { createWorld, deserialize, serialize, player } from '../src/sim/world.ts';
 import { execute } from '../src/sim/turn.ts';
+import { ACTORS } from '../src/content/actors.ts';
+import { GRAFTS, ITEMS, SPIKES, SPIKE_KINDS } from '../src/content/items.ts';
 import { SPRITES } from '../src/render/sprites.ts';
 import { P } from '../src/render/palette.ts';
 
@@ -153,7 +155,7 @@ describe('instability', () => {
     expect(tierFor(20)).toBe('STATIC');
     expect(tierFor(40)).toBe('DISSONANCE');
     expect(tierFor(60)).toBe('FRACTURE');
-    expect(tierFor(80)).toBe('CYBERPSYCHOSIS');
+    expect(tierFor(80)).toBe('DISSOLUTION');
   });
 
   it('pays for itself in damage', () => {
@@ -164,7 +166,7 @@ describe('instability', () => {
 
   it('warns in plain words before every tier that alters the interface', () => {
     // The consent that separates the Fracture mechanic from a bug.
-    for (const tier of ['STATIC', 'DISSONANCE', 'FRACTURE', 'CYBERPSYCHOSIS'] as const) {
+    for (const tier of ['STATIC', 'DISSONANCE', 'FRACTURE', 'DISSOLUTION'] as const) {
       expect(TIER_WARNING[tier].length).toBeGreaterThan(10);
     }
   });
@@ -239,6 +241,64 @@ describe('world and turn pipeline', () => {
 });
 
 /**
+ * Content tables are looked up by key, so a key that drifts from its own
+ * `kind` field is a runtime crash that `Record<string, T>` hides completely.
+ * A rename did exactly that: SPIKES was keyed `lock` while every lookup used
+ * `lockout`, so tapping the slot would have thrown.
+ */
+describe('content table integrity', () => {
+  it('keys every table by its own kind', () => {
+    for (const [key, template] of Object.entries(ITEMS)) {
+      expect(template.kind, `ITEMS.${key}`).toBe(key);
+    }
+    for (const [key, template] of Object.entries(GRAFTS)) {
+      expect(template.kind, `GRAFTS.${key}`).toBe(key);
+    }
+    for (const [key, template] of Object.entries(SPIKES)) {
+      expect(template.kind, `SPIKES.${key}`).toBe(key);
+    }
+    for (const [key, template] of Object.entries(ACTORS)) {
+      expect(template.kind, `ACTORS.${key}`).toBe(key);
+    }
+  });
+
+  it('resolves every declared spike kind', () => {
+    for (const kind of SPIKE_KINDS) {
+      expect(SPIKES[kind], `SPIKES.${kind} missing`).toBeDefined();
+    }
+  });
+
+  it('gives every actor and item a sprite that exists', () => {
+    for (const template of Object.values(ACTORS)) {
+      expect(SPRITES[template.sprite], `sprite ${template.sprite}`).toBeDefined();
+    }
+    for (const template of Object.values(ITEMS)) {
+      expect(SPRITES[template.sprite], `sprite ${template.sprite}`).toBeDefined();
+    }
+  });
+
+  it('keeps no franchise-derived vocabulary in player-facing names', () => {
+    // The naming is meant to be this game's own, not a reskin of someone
+    // else's setting bible. Names are what players read, so they get checked.
+    const banned = /sandevistan|kerenzikov|kiroshi|monowire|gorilla arms|subdermal|blood pump|second heart|optical camo|quickhack|blackwall|cyberpsych|netrunner|night city|ripperdoc|braindance|trauma team|monoblade|scav\b/i;
+    // Bulk-rename artifacts: a system word bolted onto a name it never had.
+    // "GRAFTS-HEAD" shipped in a balance report exactly this way.
+    const artifact = /grafts-|spike-head|\bgrafts\b\s*-/i;
+    const names = [
+      ...Object.values(ACTORS).map((a) => a.name),
+      ...Object.values(ITEMS).flatMap((i) => [i.name, i.desc]),
+      ...Object.values(GRAFTS).flatMap((c) => [c.name, c.desc]),
+      ...Object.values(SPIKES).flatMap((s) => [s.name, s.desc]),
+      ...Object.values(TIER_WARNING),
+    ];
+    for (const name of names) {
+      expect(banned.test(name), `franchise term in "${name}"`).toBe(false);
+      expect(artifact.test(name), `rename artifact in "${name}"`).toBe(false);
+    }
+  });
+});
+
+/**
  * The palette linter from ARCHITECTURE.md §9, as a test: sprites are inline
  * tables in the slice, so style consistency is enforced in CI rather than
  * left to taste.
@@ -253,7 +313,7 @@ describe('sprite palette discipline', () => {
     }
   });
 
-  it('uses only SPRAWL-36 colors', () => {
+  it('uses only VERGE-36 colors', () => {
     for (const [name, sprite] of Object.entries(SPRITES)) {
       for (const row of sprite) {
         for (const ch of row) {

@@ -5,9 +5,9 @@
  * eye's resting position, because it is the most important number in the game.
  */
 
-import { HACKS, ITEMS } from '../content/items.ts';
-import { tierFor } from '../sim/chrome.ts';
-import type { World } from '../sim/types.ts';
+import { SPIKES, ITEMS } from '../content/items.ts';
+import { tierFor } from '../sim/grafts.ts';
+import type { SpikeKind, World } from '../sim/types.ts';
 import { drawText, textWidth } from './font.ts';
 import type { Layout } from './layout.ts';
 import { P, SEM } from './palette.ts';
@@ -17,9 +17,9 @@ import { drawSprite } from './sprites.ts';
 export interface SlotDef {
   id: string;
   label: string;
-  kind: 'hack' | 'item' | 'shoot' | 'inventory';
+  kind: 'spike' | 'item' | 'shoot' | 'inventory';
   itemId?: number;
-  hack?: string;
+  spike?: SpikeKind;
   count: number;
   ready: boolean;
 }
@@ -81,7 +81,7 @@ export function drawStatus(
   if (tier !== 'CLEAN') {
     const abbr = tier.slice(0, 4);
     drawText(g, abbr, layout.logicalW - 4 - textWidth(abbr), 12,
-      tier === 'CYBERPSYCHOSIS' ? P.r : P.q);
+      tier === 'DISSOLUTION' ? P.r : P.q);
   }
 }
 
@@ -163,7 +163,7 @@ export function drawActionBar(
     }
   });
 
-  const weapon = world.player.ammo > 0 ? 'SMG + MONOBLADE' : 'MONOBLADE';
+  const weapon = world.player.ammo > 0 ? 'SMG + CUTTER' : 'CUTTER';
   drawText(g, weapon, 3, layout.barY + 40, P.e);
   const ammo = `${world.player.ammo}/${world.player.maxAmmo}`;
   drawText(g, ammo, layout.logicalW - 4 - textWidth(ammo), layout.barY + 40, P.A);
@@ -184,8 +184,8 @@ function drawSlotIcon(g: CanvasRenderingContext2D, slot: SlotDef, x: number, y: 
     g.fillRect(x, y + 5, 13, 1);
     return;
   }
-  if (slot.kind === 'hack') {
-    const tint = slot.hack === 'overheat' ? P.z : slot.hack === 'lock' ? P.n : P.v;
+  if (slot.kind === 'spike') {
+    const tint = slot.spike === 'overload' ? P.z : slot.spike === 'lockout' ? P.n : P.v;
     g.fillStyle = P.t;
     g.fillRect(x + 1, y + 2, 14, 12);
     g.fillStyle = tint;
@@ -198,7 +198,7 @@ function drawSlotIcon(g: CanvasRenderingContext2D, slot: SlotDef, x: number, y: 
   drawSprite(g, slot.id, x - 2, y - 2);
 }
 
-/** Builds the six action-bar slots from current inventory and hacks. */
+/** Builds the six action-bar slots from current inventory and spikes. */
 export function buildSlots(world: World): SlotDef[] {
   const slots: SlotDef[] = [];
   slots.push({
@@ -206,16 +206,16 @@ export function buildSlots(world: World): SlotDef[] {
     count: world.player.ammo, ready: world.player.ammo > 0,
   });
 
-  for (const hackKind of ['overheat', 'lock'] as const) {
-    const template = HACKS[hackKind];
+  for (const spikeKind of ['overload', 'lockout'] as const) {
+    const template = SPIKES[spikeKind];
     slots.push({
-      id: hackKind, label: template.name, kind: 'hack', hack: hackKind,
+      id: spikeKind, label: template.name, kind: 'spike', spike: spikeKind,
       count: template.power, ready: world.player.power >= template.power,
     });
   }
 
   // Two most-useful consumables get a slot; the rest live in the inventory.
-  const priority = ['medkit', 'ghostshunt', 'powercell', 'emp', 'stim', 'chip'];
+  const priority = ['patchkit', 'scrub', 'powercell', 'emp', 'ampoule', 'graftchip'];
   const shown: string[] = [];
   for (const kind of priority) {
     if (shown.length >= 2) break;

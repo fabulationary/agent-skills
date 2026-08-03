@@ -9,9 +9,9 @@ import type { TraceState, World } from './types.ts';
 export const TRACE_PER_TURN = 0.4;
 export const TRACE_ON_SHOT = 2;
 export const TRACE_ON_NETWORKED_KILL = 3;
-export const TRACE_ON_FAILED_HACK = 6;
+export const TRACE_ON_FAILED_SPIKE = 6;
 export const TRACE_ON_INSTALL = 10;
-export const TRACE_ON_JACKIN = 3;
+export const TRACE_ON_SPLICE = 3;
 
 const THRESHOLDS: { at: number; state: TraceState }[] = [
   { at: 95, state: 'PURGE' },

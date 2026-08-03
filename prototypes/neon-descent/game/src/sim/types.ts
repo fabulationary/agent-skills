@@ -20,7 +20,7 @@ export const TRANSPARENT: ReadonlySet<number> = new Set([
 export type Faction = 'player' | 'hostile';
 
 export interface Status {
-  burn: number;  // turns of Overheat damage-over-time remaining
+  burn: number;  // turns of Overload damage-over-time remaining
   lock: number;  // turns of System Lock (cannot act)
   blind: number; // turns of Blind Optics (sight radius 1)
 }
@@ -42,7 +42,7 @@ export interface Actor {
   sight: number;
   faction: Faction;
   ai: AiKind;
-  hackable: boolean;
+  breachable: boolean;
   networked: boolean;     // killing it spikes Trace; cameras/bots are networked
   rangedRange: number;    // 0 = melee only
   explodes: number;       // damage dealt to adjacent actors on death, 0 = none
@@ -64,8 +64,8 @@ export type AiKind =
   | 'warden';      // boss: melee, charges when at range
 
 export type ItemKind =
-  | 'medkit' | 'powercell' | 'ghostshunt' | 'emp' | 'stim'
-  | 'chip';        // unidentified until used or read
+  | 'patchkit' | 'powercell' | 'scrub' | 'emp' | 'ampoule'
+  | 'graftchip';        // unidentified until used or read
 
 export interface Item {
   id: number;
@@ -74,15 +74,18 @@ export interface Item {
   x: number;
   y: number;      // -1,-1 when carried
   charges: number;
-  chromeKind?: string; // for `chip`: which implant it installs
+  graftKind?: string; // for `chip`: which implant it installs
 }
 
-export type ChromeSlot = 'neural' | 'optic' | 'arm' | 'torso' | 'legs' | 'skin';
+export type GraftSlot = 'neural' | 'optic' | 'arm' | 'torso' | 'legs' | 'skin';
 
-export interface Chrome {
+/** Intrusion programs. A union, so a stale lookup key is a compile error. */
+export type SpikeKind = 'overload' | 'lockout' | 'dazzle';
+
+export interface Graft {
   kind: string;
   name: string;
-  slot: ChromeSlot;
+  slot: GraftSlot;
   instability: number;
   desc: string;
 }
@@ -94,7 +97,7 @@ export interface Player {
   maxPower: number;
   credits: number;
   instability: number;
-  chrome: Partial<Record<ChromeSlot, Chrome>>;
+  grafts: Partial<Record<GraftSlot, Graft>>;
   inventory: Item[];
   ammo: number;
   maxAmmo: number;
@@ -138,7 +141,7 @@ export type SimEvent =
   | { t: 'move'; id: number; fromX: number; fromY: number; toX: number; toY: number }
   | { t: 'attack'; id: number; targetId: number; dmg: number; crit: boolean }
   | { t: 'shoot'; id: number; fromX: number; fromY: number; toX: number; toY: number; hit: boolean }
-  | { t: 'hack'; id: number; targetId: number; hack: string; ok: boolean }
+  | { t: 'spike'; id: number; targetId: number; spike: SpikeKind; ok: boolean }
   | { t: 'death'; id: number; x: number; y: number }
   | { t: 'explode'; x: number; y: number; dmg: number }
   | { t: 'pickup'; itemId: number }
@@ -155,7 +158,7 @@ export type Intent =
   | { kind: 'wait' }
   | { kind: 'step'; x: number; y: number }   // one step of an auto-run path
   | { kind: 'shoot'; targetId: number }
-  | { kind: 'hack'; hack: string; targetId: number }
+  | { kind: 'spike'; spike: SpikeKind; targetId: number }
   | { kind: 'use'; itemId: number }
   | { kind: 'descend' }
-  | { kind: 'jackin' };
+  | { kind: 'splice' };

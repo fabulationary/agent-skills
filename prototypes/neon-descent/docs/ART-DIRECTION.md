@@ -15,7 +15,7 @@ wins — a game where you die because you misread a sprite is not atmospheric, i
 
 ---
 
-## 1. Palette — SPRAWL-36
+## 1. Palette — VERGE-36
 
 A 36-color master palette, organized as eight ramps. **No color outside this list ships**, and
 the build fails if one does (ARCHITECTURE.md §9). 16-bit-era discipline is not nostalgia here —
@@ -36,7 +36,7 @@ a hard color budget is what forces sprites to read as a set rather than a pile.
 ### MAGENTA — neon signage, the player's accent
 `#46082f` `#9b1067` `#ee2b8e` `#ff8ecd`
 
-### ACID — hacking, ICE, POWER, toxicity
+### ACID — intrusion, spikes, POWER, toxicity
 `#0b3418` `#1c8038` `#46dc63` `#b2ffbc`
 
 ### SODIUM — hazard light, fire, Act I ambience
@@ -57,12 +57,13 @@ on them in Act III:
 | --- | --- | --- |
 | **You** | MAGENTA | Player sprite accent, your projectiles, your area indicators |
 | **Threat** | BLOOD | Enemy outlines when hostile-and-aware, damage numbers, HP |
-| **Data / hackable** | ACID | Hackable actors' glint, POWER meter, quickhack overlays |
-| **Interactive** | CYAN | Terminals, doors, loot glint, all UI chrome and text frames |
+| **Data / breachable** | ACID | Breachable actors' glint, POWER meter, spike overlays |
+| **Interactive** | CYAN | Terminals, doors, loot glint, all UI grafts and text frames |
 | **Hazard (environmental)** | SODIUM | Fire, electrified floor, steam, Act I lighting |
 | **Unknown / unexplored** | VOID | Fog, remembered-but-not-visible tiles at 40% |
 
-**Never** use BLOOD for a non-threat or ACID for a non-hackable. The palette is a language.
+**Never** use BLOOD for a non-threat or ACID for something you cannot breach. The palette
+is a language.
 
 ### Colorblind mode
 
@@ -92,13 +93,13 @@ Coordinates are logical pixels. Multiply by 6 for a 1080p phone.
  │                                                  │
  │                                                  │
  ├──────────────────────────────────────────────────┤ y=242
- │ > The scav bleeds out.                           │  MESSAGE LOG
+ │ > The picker bleeds out.                         │  MESSAGE LOG
  │ > TRACE: HUNT. Sec-drones inbound.               │  h=22 (2 lines)
  ├──────────────────────────────────────────────────┤ y=264
  │  ┌──┐ ┌──┐ ┌──┐ ┌──┐ ┌──┐ ┌──┐                   │  ACTION BAR
  │  │▓▓│ │▓▓│ │▓▓│ │▓▓│ │▓▓│ │≡ │                   │  h=52
  │  └──┘ └──┘ └──┘ └──┘ └──┘ └──┘                   │  6 × 26 px, 4 px gaps
- │  MONOWIRE                          ·· 12/24      │
+ │  RIBBON EDGE                       ·· 12/24      │
  └──────────────────────────────────────────────────┘ y=316
 ```
 
@@ -129,8 +130,8 @@ Buttons are 26 logical px = **156 device px on a 1080p phone ≈ 9.2 mm**, comfo
 7 mm minimum touch target. Mirrorable left/right for handedness. The strip below shows the
 equipped weapon name and ammo.
 
-**Why the action bar is worth 16% of the screen:** the alternative is putting quickhacks behind
-a menu, and a quickhack behind a menu is a quickhack that never gets used. Abilities the player
+**Why the action bar is worth 16% of the screen:** the alternative is putting spikes behind
+a menu, and a spike behind a menu is a spike that never gets used. Abilities the player
 can't see, they don't play.
 
 ---
@@ -207,9 +208,9 @@ progression rather than as random noise:
 | Tier | Visual |
 | --- | --- |
 | **Static** (20–39) | Occasional 1-frame horizontal tear across the viewport; log text briefly shows corrupted glyphs |
-| **Dissonance** (40–59) | Persistent faint chromatic fringe on the player sprite; quickhack targeting reticle jitters 1 px |
+| **Dissonance** (40–59) | Persistent faint chromatic fringe on the player sprite; spike targeting reticle jitters 1 px |
 | **Fracture** (60–79) | Enemy threat outlines occasionally render in the *wrong* semantic color; short blocks of the terrain layer redraw from a stale frame |
-| **Cyberpsychosis** (80+) | The palette itself shifts — STEEL ramp desaturates toward VOID, BLOOD saturates. The world stops looking like the world. HUD text renders in MAGENTA |
+| **Dissolution** (80+) | The palette itself shifts — STEEL ramp desaturates toward VOID, BLOOD saturates. The world stops looking like the world. HUD text renders in MAGENTA |
 
 The rule that keeps this from being cheap: **the glitches always tell the truth about the
 player's state, even when they lie about the world's.** A player who sees the palette drain
@@ -237,7 +238,7 @@ Small things, listed because they get forgotten and they are most of what "juice
 
 - Damage numbers rise 6 px over 300 ms and fade; crits are 7×9 and shake
 - Hits push the target sprite 2 px away from the attacker and back over 120 ms
-- Kills leave a corpse tile that persists for the floor's lifetime — Act III's Daemons make
+- Kills leave a corpse tile that persists for the floor's lifetime — Act III's Revenants make
   this mechanically load-bearing
 - Descending fades to VOID over 400 ms, holds 200 ms, then fades in with the new floor's
   ambient tint — the palette shift between acts should be felt on arrival

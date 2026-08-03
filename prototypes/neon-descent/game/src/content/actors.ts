@@ -14,7 +14,7 @@ export interface ActorTemplate {
   sight: number;
   ai: AiKind;
   faction: Faction;
-  hackable: boolean;
+  breachable: boolean;
   networked: boolean;
   rangedRange: number;
   explodes: number;
@@ -28,7 +28,7 @@ const base = {
   armor: 0,
   speed: 100,
   faction: 'hostile' as Faction,
-  hackable: false,
+  breachable: false,
   networked: false,
   rangedRange: 0,
   explodes: 0,
@@ -40,7 +40,7 @@ export const ACTORS: Record<string, ActorTemplate> = {
   player: {
     ...base,
     kind: 'player',
-    name: 'RUNNER',
+    name: 'DIVER',
     sprite: 'player',
     hp: 110,
     dmgLo: 6,
@@ -52,11 +52,11 @@ export const ACTORS: Record<string, ActorTemplate> = {
   },
 
   // --- Act I ------------------------------------------------------------
-  scav: {
+  picker: {
     ...base,
-    kind: 'scav',
-    name: 'SCAV',
-    sprite: 'scav',
+    kind: 'picker',
+    name: 'PICKER',
+    sprite: 'picker',
     hp: 16,
     dmgLo: 3,
     dmgHi: 6,
@@ -77,16 +77,16 @@ export const ACTORS: Record<string, ActorTemplate> = {
     speed: 150,
     sight: 7,
     ai: 'drone',
-    hackable: true,
+    breachable: true,
     networked: true,
     explodes: 8,
     weights: [6, 8, 8, 7],
   },
-  chromehead: {
+  grafted: {
     ...base,
-    kind: 'chromehead',
-    name: 'CHROME-HEAD',
-    sprite: 'chromehead',
+    kind: 'grafted',
+    name: 'GRAFTED',
+    sprite: 'grafted',
     hp: 24,
     armor: 1,
     dmgLo: 4,
@@ -112,7 +112,7 @@ export const ACTORS: Record<string, ActorTemplate> = {
     speed: 100,
     sight: 7,
     ai: 'turret',
-    hackable: true,
+    breachable: true,
     networked: true,
     rangedRange: 6,
     weights: [2, 3, 4, 5],
@@ -151,7 +151,7 @@ export const ACTORS: Record<string, ActorTemplate> = {
     speed: 140,
     sight: 8,
     ai: 'drone',
-    hackable: true,
+    breachable: true,
     networked: true,
     explodes: 6,
     weights: [],

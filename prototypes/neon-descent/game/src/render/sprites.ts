@@ -1,5 +1,5 @@
 /**
- * 16x16 sprites, <=12 colors each, drawn from SPRAWL-36 (ART-DIRECTION.md §3).
+ * 16x16 sprites, <=12 colors each, drawn from VERGE-36 (ART-DIRECTION.md §3).
  *
  * Defined inline rather than as a PNG atlas: the whole slice has no external
  * assets, so cold start is a parse and nothing else. The build-time palette
@@ -30,7 +30,7 @@ export const SPRITES: Record<string, Sprite> = {
     '....0cc..cc0....',
     '.....00..00.....',
   ],
-  scav: [
+  picker: [
     '................',
     '................',
     '.....000000.....',
@@ -48,7 +48,7 @@ export const SPRITES: Record<string, Sprite> = {
     '.....00..00.....',
     '................',
   ],
-  chromehead: [
+  grafted: [
     '................',
     '.....000000.....',
     '....0feeeef0....',
@@ -174,7 +174,7 @@ export const SPRITES: Record<string, Sprite> = {
     '0aaaaaaaaaaaaaa0',
     '0000000000000000',
   ],
-  chip: [
+  graftchip: [
     '................',
     '................',
     '................',
@@ -192,7 +192,7 @@ export const SPRITES: Record<string, Sprite> = {
     '................',
     '................',
   ],
-  medkit: [
+  patchkit: [
     '................',
     '................',
     '................',
@@ -228,7 +228,7 @@ export const SPRITES: Record<string, Sprite> = {
     '................',
     '................',
   ],
-  ghostshunt: [
+  scrub: [
     '................',
     '................',
     '................',
@@ -264,7 +264,7 @@ export const SPRITES: Record<string, Sprite> = {
     '................',
     '................',
   ],
-  stim: [
+  ampoule: [
     '................',
     '................',
     '................',

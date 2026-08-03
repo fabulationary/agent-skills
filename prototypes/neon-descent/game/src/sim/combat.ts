@@ -7,7 +7,7 @@
 
 import type { RNG } from '../core/rng.ts';
 import { dist } from '../core/grid.ts';
-import { armorBonus, damageMultiplier, meleeBonus } from './chrome.ts';
+import { armorBonus, damageMultiplier, meleeBonus } from './grafts.ts';
 import type { Actor, World } from './types.ts';
 
 export interface DamageResult {

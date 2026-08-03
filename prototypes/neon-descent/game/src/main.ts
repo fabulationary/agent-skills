@@ -7,11 +7,13 @@
  * frame of animation plays (ARCHITECTURE.md §4).
  */
 
-import { CHROME, HACKS, ITEMS } from './content/items.ts';
-import { tierFor, TIER_WARNING } from './sim/chrome.ts';
+import { GRAFTS, SPIKES, ITEMS } from './content/items.ts';
+import { tierFor, TIER_WARNING } from './sim/grafts.ts';
 import { findPath } from './sim/path.ts';
 import { execute } from './sim/turn.ts';
-import { Tile, type Intent, type SimEvent, type World } from './sim/types.ts';
+import {
+  Tile, type Intent, type SimEvent, type SpikeKind, type World,
+} from './sim/types.ts';
 import {
   actorAt, createWorld, deserialize, isWalkable, navOf, serialize, tileAt,
 } from './sim/world.ts';
@@ -41,7 +43,7 @@ let world: World;
 let fx: SceneFx = newFx();
 let mode: Mode = 'play';
 let slots: SlotDef[] = [];
-let pendingHack: string | null = null;
+let pendingSpike: SpikeKind | null = null;
 let activeSlot: number | null = null;
 let pendingInstallItemId: number | null = null;
 let autoPath: { x: number; y: number }[] | null = null;
@@ -227,7 +229,7 @@ function onGesture(gesture: Gesture): void {
   if (gesture.kind === 'swipe') {
     if (mode === 'targeting') {
       mode = 'play';
-      pendingHack = null;
+      pendingSpike = null;
       activeSlot = null;
       dirty = true;
       return;
@@ -254,10 +256,10 @@ function onGesture(gesture: Gesture): void {
 
   if (mode === 'targeting') {
     const enemy = visibleEnemyAt(tile.x, tile.y);
-    if (enemy && pendingHack) act({ kind: 'hack', hack: pendingHack, targetId: enemy.id });
+    if (enemy && pendingSpike) act({ kind: 'spike', spike: pendingSpike, targetId: enemy.id });
     else if (enemy) act({ kind: 'shoot', targetId: enemy.id });
     mode = 'play';
-    pendingHack = null;
+    pendingSpike = null;
     activeSlot = null;
     dirty = true;
     return;
@@ -267,7 +269,7 @@ function onGesture(gesture: Gesture): void {
     // Tapping yourself: use the tile you are standing on, else wait.
     const here = tileAt(world, p.x, p.y);
     if (here === Tile.Elevator) act({ kind: 'descend' });
-    else if (here === Tile.Terminal) act({ kind: 'jackin' });
+    else if (here === Tile.Terminal) act({ kind: 'splice' });
     else act({ kind: 'wait' });
     return;
   }
@@ -301,21 +303,21 @@ function onSlotTap(index: number): void {
 
   if (slot.kind === 'shoot') {
     mode = 'targeting';
-    pendingHack = null;
+    pendingSpike = null;
     activeSlot = index;
     dirty = true;
     return;
   }
-  if (slot.kind === 'hack') {
+  if (slot.kind === 'spike') {
     mode = 'targeting';
-    pendingHack = slot.hack!;
+    pendingSpike = slot.spike!;
     activeSlot = index;
     dirty = true;
     return;
   }
   if (slot.kind === 'item' && slot.itemId !== undefined) {
     const item = world.player.inventory.find((i) => i.id === slot.itemId);
-    if (item?.kind === 'chip') {
+    if (item?.kind === 'graftchip') {
       pendingInstallItemId = item.id;
       mode = 'install';
       dirty = true;
@@ -336,7 +338,7 @@ function handleInventoryTap(lx: number, ly: number): void {
   }
   void lx;
   const item = world.player.inventory[index];
-  if (item.kind === 'chip') {
+  if (item.kind === 'graftchip') {
     pendingInstallItemId = item.id;
     mode = 'install';
     dirty = true;
@@ -368,13 +370,13 @@ function inspect(x: number, y: number): void {
   const enemy = world.visible[i] ? actorAt(world, x, y) : undefined;
   const item = world.visible[i] ? world.items.find((it) => it.x === x && it.y === y) : undefined;
   if (enemy) {
-    inspectText = `${enemy.name} ${enemy.hp}/${enemy.maxHp} ARM${enemy.armor}${enemy.hackable ? ' HACKABLE' : ''}`;
+    inspectText = `${enemy.name} ${enemy.hp}/${enemy.maxHp} ARM${enemy.armor}${enemy.breachable ? ' HACKABLE' : ''}`;
   } else if (item) {
     inspectText = `${ITEMS[item.kind].name}: ${ITEMS[item.kind].desc}`;
   } else if (world.explored[i] === 1) {
     const t = world.tiles[i];
     inspectText = t === Tile.Elevator ? 'SHAFT DOWN. TAP YOURSELF HERE TO DESCEND.'
-      : t === Tile.Terminal ? 'TERMINAL. STAND ON IT AND TAP TO JACK IN.'
+      : t === Tile.Terminal ? 'TERMINAL. STAND ON IT AND TAP TO SPLICE IN.'
       : t === Tile.Wall ? 'CONCRETE AND REBAR.' : 'FLOOR.';
   } else {
     inspectText = 'UNKNOWN.';
@@ -394,7 +396,7 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (mode === 'targeting' || mode === 'install' || mode === 'inventory') {
       mode = 'play';
-      pendingHack = null;
+      pendingSpike = null;
       pendingInstallItemId = null;
       activeSlot = null;
       dirty = true;
@@ -445,10 +447,10 @@ function drawInventory(): void {
     const y = layout.viewY + 24 + i * 14;
     if (y > panel.y + height - 12) return;
     drawSprite(g, spriteForItem(item.kind), panel.x + 2, y - 5);
-    const name = item.kind === 'chip' && !world.player.identified[item.chromeKind ?? '']
-      ? 'WETWARE CHIP'
-      : item.kind === 'chip'
-        ? CHROME[item.chromeKind!].name
+    const name = item.kind === 'graftchip' && !world.player.identified[item.graftKind ?? '']
+      ? 'GRAFT CHIP'
+      : item.kind === 'graftchip'
+        ? GRAFTS[item.graftKind!].name
         : ITEMS[item.kind].name;
     drawText(g, name.slice(0, 22), panel.x + 20, y, SEM.textBright);
   });
@@ -457,15 +459,15 @@ function drawInventory(): void {
 
 function drawInstallPrompt(): void {
   const item = world.player.inventory.find((i) => i.id === pendingInstallItemId);
-  if (!item?.chromeKind) { mode = 'play'; return; }
-  const chrome = CHROME[item.chromeKind];
+  if (!item?.graftKind) { mode = 'play'; return; }
+  const grafts = GRAFTS[item.graftKind];
   const height = layout.viewRows * TILE - 16;
   const panel = drawPanel('FIELD SURGERY', height);
 
   let y = panel.y + 20;
-  drawText(g, chrome.name.slice(0, 26), panel.x + 4, y, SEM.you);
+  drawText(g, grafts.name.slice(0, 26), panel.x + 4, y, SEM.you);
   y += 12;
-  for (const line of wrap(chrome.desc, 27)) {
+  for (const line of wrap(grafts.desc, 27)) {
     drawText(g, line, panel.x + 4, y, P.e);
     y += 9;
   }
@@ -474,13 +476,13 @@ function drawInstallPrompt(): void {
   y += 9;
   drawText(g, '      10 TRACE', panel.x + 4, y, P.z);
   y += 9;
-  drawText(g, `INSTABILITY +${chrome.instability}`, panel.x + 4, y, P.q);
+  drawText(g, `INSTABILITY +${grafts.instability}`, panel.x + 4, y, P.q);
   y += 12;
 
-  const after = tierFor(world.player.instability + chrome.instability);
+  const after = tierFor(world.player.instability + grafts.instability);
   const before = tierFor(world.player.instability);
   if (after !== before && TIER_WARNING[after]) {
-    // Two lines: "THIS PUSHES YOU TO CYBERPSYCHOSIS:" does not fit in 29 glyphs.
+    // Two lines: "THIS PUSHES YOU TO DISSOLUTION:" does not fit in 29 glyphs.
     drawText(g, 'THIS PUSHES YOU TO', panel.x + 4, y, SEM.threat);
     y += 9;
     drawText(g, `${after}:`, panel.x + 4, y, SEM.threat);
@@ -509,7 +511,7 @@ function drawGameOver(): void {
   let y = panel.y + 24;
   const lines = world.won
     ? ['THE WARDEN IS DOWN.', 'YOU RODE THE SHAFT OUT WITH', 'EVERYTHING YOU COULD CARRY.']
-    : ['THE STACK KEEPS WHAT IT KILLS.', 'YOUR FIXER WILL HEAR ABOUT IT', 'FROM SOMEONE ELSE.'];
+    : ['THE STACK KEEPS WHAT IT KILLS.', 'YOUR BROKER WILL HEAR ABOUT IT', 'FROM SOMEONE ELSE.'];
   for (const line of lines) {
     drawText(g, line, panel.x + 4, y, world.won ? P.v : P.D);
     y += 10;
@@ -547,15 +549,15 @@ function wrap(text: string, cols: number): string[] {
 function drawTargetingOverlay(): void {
   const p = world.actors[0];
   const cam = cameraOrigin(layout, p.x, p.y, world.w, world.h);
-  const range = pendingHack ? HACKS[pendingHack].range : 8;
+  const range = pendingSpike ? SPIKES[pendingSpike].range : 8;
   g.globalAlpha = 0.5;
   for (const a of world.actors) {
     if (a.faction !== 'hostile') continue;
     if (!world.visible[a.y * world.w + a.x]) continue;
     if (Math.max(Math.abs(a.x - p.x), Math.abs(a.y - p.y)) > range) continue;
-    // Only bracket what this action can actually affect. Marking an unhackable
-    // scav as a valid quickhack target is the interface lying for free.
-    if (pendingHack && !a.hackable) continue;
+    // Only bracket what this action can actually affect. Marking an unbreachable
+    // picker as a valid spike target is the interface lying for free.
+    if (pendingSpike && !a.breachable) continue;
     const vx = a.x - cam.x;
     const vy = a.y - cam.y;
     if (vx < 0 || vy < 0 || vx >= layout.viewCols || vy >= layout.viewRows) continue;
@@ -570,7 +572,7 @@ function drawTargetingOverlay(): void {
     }
   }
   g.globalAlpha = 1;
-  const label = pendingHack ? `${HACKS[pendingHack].name}: PICK A TARGET` : 'FIRE: PICK A TARGET';
+  const label = pendingSpike ? `${SPIKES[pendingSpike].name}: PICK A TARGET` : 'FIRE: PICK A TARGET';
   g.fillStyle = P['0'];
   g.fillRect(0, layout.viewY, layout.logicalW, 11);
   drawText(g, label, 3, layout.viewY + 2, SEM.interactive);

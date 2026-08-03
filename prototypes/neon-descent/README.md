@@ -27,14 +27,14 @@ harness caught.
 
 | Doc | What's in it |
 | --- | --- |
-| **[docs/DESIGN.md](docs/DESIGN.md)** | The game. Pillars, core loop, Trace clock, chrome/Instability, combat, enemies, structure, controls, scope, and the open questions worth arguing about |
+| **[docs/DESIGN.md](docs/DESIGN.md)** | The game. Pillars, core loop, Trace clock, grafts/Instability, combat, enemies, structure, controls, scope, and the open questions worth arguing about |
 | **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** | Stack rationale, resolution/scaling math, module layout, turn pipeline, determinism, persistence, testing strategy, Android shell, build sequencing |
-| **[docs/ART-DIRECTION.md](docs/ART-DIRECTION.md)** | SPRAWL-36 palette with fixed color semantics, pixel-exact screen layout, sprite and animation budgets, lighting, the Instability glitch language |
+| **[docs/ART-DIRECTION.md](docs/ART-DIRECTION.md)** | VERGE-36 palette with fixed color semantics, pixel-exact screen layout, sprite and animation budgets, lighting, the Instability glitch language |
 
 ## Screens
 
 All captured from the running build at 720×1600, integer-scaled ×4. Everything is drawn
-in code from the SPRAWL-36 palette — no external assets, no font files, no libraries.
+in code from the VERGE-36 palette — no external assets, no font files, no libraries.
 
 | | |
 | --- | --- |
@@ -44,7 +44,7 @@ in code from the SPRAWL-36 palette — no external assets, no font files, no lib
 ![Field surgery](mockup/game-install.png)
 
 The install screen, and the reason the Instability mechanic is a mechanic rather than a
-bug: before you accept a Sandevistan you are told, in plain words, that threat colours
+bug: before you accept a Slipstream you are told, in plain words, that threat colours
 will start lying to you.
 
 `mockup/index.html` is the original static layout study
@@ -86,7 +86,7 @@ Building it moved three numbers, each for a reason worth recording:
 - **Hunter-Killer speed 120 → 100.** DESIGN.md §6.4 promises you can outrun it to the
   elevator. At 120 you provably could not, and the harness measured it causing 60% of
   all deaths. The design was right and the number was wrong.
-- **Chrome-head speed 130 → 115, damage 5–9 → 4–8.** 42% of deaths from one Act I enemy.
+- **Grafted speed 130 → 115, damage 5–9 → 4–8.** 42% of deaths from one Act I enemy.
   Now 33%, still above my own 25% line — flagged rather than tuned further, because the
   remaining gap may be an artifact of a bot that melees everything.
 - **Floor tiles one ramp step lighter.** In an open cavern with no walls in frame, the

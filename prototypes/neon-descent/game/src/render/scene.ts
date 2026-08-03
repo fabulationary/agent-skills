@@ -8,7 +8,7 @@
  */
 
 import { RNG } from '../core/rng.ts';
-import { tierFor } from '../sim/chrome.ts';
+import { tierFor } from '../sim/grafts.ts';
 import { Tile, type World } from '../sim/types.ts';
 import { cameraOrigin, TILE, type Layout } from './layout.ts';
 import { P, SEM } from './palette.ts';
@@ -244,7 +244,7 @@ export function drawScene(
       // this from a bug (DESIGN.md §11.1).
       let color = a.aware ? SEM.threat : SEM.threatDim;
       let dashed = a.aware;
-      if (tier === 'FRACTURE' || tier === 'CYBERPSYCHOSIS') {
+      if (tier === 'FRACTURE' || tier === 'DISSOLUTION') {
         if (tileHash(a.id, Math.floor(opts.now / 900)) > 0.85) {
           color = SEM.data;
           dashed = !dashed;
@@ -334,11 +334,11 @@ export function drawScene(
 
 export function spriteForItem(kind: string): string {
   switch (kind) {
-    case 'medkit': return 'medkit';
+    case 'patchkit': return 'patchkit';
     case 'powercell': return 'powercell';
-    case 'ghostshunt': return 'ghostshunt';
+    case 'scrub': return 'scrub';
     case 'emp': return 'emp';
-    case 'stim': return 'stim';
-    default: return 'chip';
+    case 'ampoule': return 'ampoule';
+    default: return 'graftchip';
   }
 }

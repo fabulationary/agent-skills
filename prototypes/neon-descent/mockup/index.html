@@ -20,7 +20,7 @@
  * This is a mockup: no simulation, no input. Art only.
  * ------------------------------------------------------------------ */
 
-/* ---------- SPRAWL-36 palette (ART-DIRECTION.md §1) ---------- */
+/* ---------- VERGE-36 palette (ART-DIRECTION.md §1) ---------- */
 const P = {
   '0':'#05030d','1':'#0d0a1f','2':'#171236','3':'#241a52','4':'#33266f',
   'a':'#14161f','b':'#23283a','c':'#3a4257','d':'#566076','e':'#7c869c','f':'#aab4c7',
@@ -133,7 +133,7 @@ player:[
 '....0bb..bb0....',
 '....0cc..cc0....',
 '.....00..00.....'],
-scav:[
+picker:[
 '................',
 '................',
 '.....000000.....',
@@ -365,12 +365,12 @@ for (let y=0;y<VIEW_H;y++) for (let x=0;x<VIEW_W;x++){
   const px = VIEW_X + x*TILE, py = VIEW_Y + y*TILE, t = at(x,y);
   if (t === 'T') sprite('terminal', px, py);
   if (t === '$') sprite('chip', px, py);
-  if (t === 's'){ threatOutline('scav', px,py,P['D'],true);   sprite('scav', px, py); }   // aware
+  if (t === 's'){ threatOutline('picker', px,py,P['D'],true); sprite('picker', px, py); } // aware
   if (t === 'd'){ threatOutline('drone',px,py,P['C'],false);  sprite('drone', px, py); }  // unaware
   if (t === '@') sprite('player', px, py);
 }
 
-/* damage number, mid-float above the scav */
+/* damage number, mid-float above the picker */
 text('-7', VIEW_X+7*TILE+2, VIEW_Y+3*TILE-4, P['D'], .9);
 
 /* scanlines */
@@ -410,7 +410,7 @@ text('$1240', 176-textW('$1240'), 28, P['A']);
 /* ---------- MESSAGE LOG ---------- */
 g.fillStyle = P['0']; g.fillRect(0,LOG_Y,LW,BAR_Y-LOG_Y);
 g.fillStyle = P['b']; g.fillRect(0,LOG_Y,LW,1);
-text('> THE SCAV BLEEDS OUT.', 3, LOG_Y+3, P['e'], .55);
+text('> THE PICKER BLEEDS OUT.', 3, LOG_Y+3, P['e'], .55);
 text('> TRACE: HUNT. DRONES INBOUND', 3, LOG_Y+12, P['z']);
 
 /* ---------- ACTION BAR ---------- */
@@ -458,7 +458,7 @@ text('3', 2+3*30+20, BAR_Y+29, P['L']);
 text('0', 2+4*30+20, BAR_Y+29, P['h']);
 
 /* equipped weapon strip */
-text('MONOWIRE', 3, BAR_Y+40, P['e']);
+text('RIBBON EDGE', 3, BAR_Y+40, P['e']);
 text('12/24', 176-textW('12/24'), BAR_Y+40, P['A']);
 
 /* ---------- present: single integer-scaled blit ---------- */

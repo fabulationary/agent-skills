@@ -9,11 +9,11 @@
 import { RNG, streamFor } from '../core/rng.ts';
 import { dist } from '../core/grid.ts';
 import { ACTORS, spawnTable } from '../content/actors.ts';
-import { CHROME_KINDS, ITEMS, lootTable } from '../content/items.ts';
+import { GRAFT_KINDS, ITEMS, lootTable } from '../content/items.ts';
 import { computeFov } from './fov.ts';
 import { generateFloor, MAP_H, MAP_W } from './mapgen.ts';
 import type { NavMap } from './path.ts';
-import { sightRadius, has } from './chrome.ts';
+import { sightRadius, has } from './grafts.ts';
 import { stateFor, waveInterval } from './trace.ts';
 import {
   Tile, TRANSPARENT, WALKABLE,
@@ -144,7 +144,7 @@ export function makeActor(world: World, kind: string, x: number, y: number): Act
     sight: t.sight,
     faction: t.faction,
     ai: t.ai,
-    hackable: t.hackable,
+    breachable: t.breachable,
     networked: t.networked,
     rangedRange: t.rangedRange,
     explodes: t.explodes,
@@ -168,7 +168,7 @@ function makeItem(world: World, kind: string, x: number, y: number, loot: RNG): 
     x, y,
     charges: t.charges,
   };
-  if (t.kind === 'chip') item.chromeKind = loot.pick(CHROME_KINDS);
+  if (t.kind === 'graftchip') item.graftKind = loot.pick(GRAFT_KINDS);
   world.items.push(item);
   return item;
 }
@@ -181,8 +181,8 @@ export function updateFov(world: World): void {
     { w: world.w, h: world.h, transparent: (x, y) => isTransparent(world, x, y) },
     p.x, p.y, radius,
   );
-  // Dermal Sensors read the tiles pressed against your skin, walls included.
-  if (has(world.player, 'dermal')) {
+  // Skin Eyes read the tiles pressed against your skin, walls included.
+  if (has(world.player, 'skineyes')) {
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         const x = p.x + dx;
@@ -225,7 +225,7 @@ export function buildFloor(world: World, floor: number): void {
     boss.aware = false;
     for (let i = 0; i < 5 && far.length; i++) {
       const spot = loot.pick(far);
-      makeActor(world, loot.chance(0.5) ? 'scav' : 'chromehead', spot.x, spot.y);
+      makeActor(world, loot.chance(0.5) ? 'picker' : 'grafted', spot.x, spot.y);
     }
   } else {
     const table = spawnTable(floor);
@@ -270,7 +270,7 @@ export function createWorld(seed: string): World {
       maxPower: 100,
       credits: 0,
       instability: 0,
-      chrome: {},
+      grafts: {},
       inventory: [],
       ammo: 24,
       maxAmmo: 24,
@@ -292,16 +292,16 @@ export function createWorld(seed: string): World {
   p.energy = 100;
   world.actors = [p];
 
-  // Starting kit: the Solo archetype (DESIGN.md §6.11).
+  // Starting kit: the BREAKER archetype (DESIGN.md §6.11).
   world.player.inventory.push(
-    { id: world.nextId++, kind: 'medkit', name: ITEMS.medkit.name, x: -1, y: -1, charges: 1 },
-    { id: world.nextId++, kind: 'medkit', name: ITEMS.medkit.name, x: -1, y: -1, charges: 1 },
+    { id: world.nextId++, kind: 'patchkit', name: ITEMS.patchkit.name, x: -1, y: -1, charges: 1 },
+    { id: world.nextId++, kind: 'patchkit', name: ITEMS.patchkit.name, x: -1, y: -1, charges: 1 },
     { id: world.nextId++, kind: 'powercell', name: ITEMS.powercell.name, x: -1, y: -1, charges: 1 },
   );
 
   buildFloor(world, 1);
   log(world, 'SUBLEVEL 1. THE STACK IS AWAKE.', 'alert');
-  log(world, 'MOVE. STANDING STILL IS HOW RUNNERS DIE.', 'info');
+  log(world, 'MOVE. STANDING STILL IS HOW DIVERS DIE.', 'info');
   return world;
 }
 
