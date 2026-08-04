@@ -1,9 +1,9 @@
 {
-  "name": "neon-descent",
+  "name": "neon-elevation",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Cyberpunk turn-based roguelike for Android, portrait, 16-bit pixel art. Act I vertical slice.",
+  "description": "Cyberpunk turn-based roguelike for Android, portrait, 16-bit pixel art. Umbilical Gamma, Act I vertical slice.",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

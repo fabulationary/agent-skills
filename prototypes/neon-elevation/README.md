@@ -25,9 +25,17 @@ catalog that makes up the rest of this repository.
 
 ## Run it
 
+**Windows:** double-click **`game/play.bat`**. It checks Node, installs dependencies the
+first time, starts the dev server and opens the game in a correctly-proportioned window.
+
+**macOS / Linux:**
+
 ```bash
 cd game && npm install && npm run dev
 ```
+
+Then narrow the browser to roughly 540×960 — the renderer scales in whole-number steps
+only, so a 540px-wide window gives an exact ×3 of the 180px logical width.
 
 49 tests (`npm test`), a headless balance harness (`npm run balance`), 22.0 KB gzipped.
 See [game/README.md](game/README.md) for controls, scope, and the bugs the harness caught.
