@@ -14,6 +14,12 @@ import {
 import { ACTORS } from '../src/content/actors.ts';
 import { GRAFTS, ITEMS, SPIKES, SPIKE_KINDS } from '../src/content/items.ts';
 import { SPRITES } from '../src/render/sprites.ts';
+import { textWidth } from '../src/render/font.ts';
+import { LOGICAL_W } from '../src/render/layout.ts';
+import {
+  LEGEND, LEGEND_FOOTER, LEGEND_LABEL_COLS, LEGEND_RULES, LEGEND_SUBTITLE,
+  LEGEND_TITLE,
+} from '../src/render/legend.ts';
 import { P } from '../src/render/palette.ts';
 
 describe('RNG', () => {
@@ -382,6 +388,45 @@ describe('suborned machines', () => {
     expect(releaseSuborned(world), 'not while one is alive').toBe(0);
     execute(world, { kind: 'step', x: stray.x, y: stray.y });
     expect(drone.suborned, 'nothing left whispering to it').toBe(false);
+  });
+});
+
+/**
+ * Text running off the right edge has shipped twice now — once on the death
+ * screen, once on the first draft of this legend. 180 logical pixels at 6px
+ * per glyph is 30 characters and there is no forgiveness in it, so the widths
+ * are asserted rather than eyeballed.
+ */
+describe('screen text fits the 180px screen', () => {
+  const SCREEN_COLS = 30;
+
+  it('keeps the legend title, subtitle and footer inside the screen', () => {
+    for (const text of [LEGEND_TITLE, LEGEND_SUBTITLE, LEGEND_FOOTER]) {
+      expect(textWidth(text), `"${text}"`).toBeLessThanOrEqual(LOGICAL_W - 6);
+    }
+  });
+
+  it('keeps every legend label inside its column', () => {
+    for (const section of LEGEND) {
+      expect(section.heading.length, section.heading).toBeLessThanOrEqual(SCREEN_COLS);
+      for (const entry of section.entries) {
+        expect(entry.label.length, `"${entry.label}"`).toBeLessThanOrEqual(LEGEND_LABEL_COLS);
+      }
+    }
+  });
+
+  it('keeps every legend rule line inside the screen', () => {
+    for (const rule of LEGEND_RULES) {
+      expect(textWidth(rule), `"${rule}"`).toBeLessThanOrEqual(LOGICAL_W - 6);
+    }
+  });
+
+  it('points every legend entry at a sprite that exists', () => {
+    for (const section of LEGEND) {
+      for (const entry of section.entries) {
+        expect(SPRITES[entry.sprite], `sprite "${entry.sprite}"`).toBeDefined();
+      }
+    }
   });
 });
 

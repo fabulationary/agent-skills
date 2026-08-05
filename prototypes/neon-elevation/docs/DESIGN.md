@@ -408,8 +408,14 @@ Weapons carry **one modifier** at most, not a stack of affixes. "Kessel-Ohara Sh
 
 Per-act generators, not one generator with a reskin:
 
-- **Act I — Freight yards.** Cellular-automata caverns under the gantries, bridged to
-  hand-authored prefab dock rooms. Organic, open, ambush-prone.
+- **Act I — Freight yards.** Rogue's own layout: a 3x3 grid of sectors, one rectangular
+  loading bay in each, joined by L-shaped corridors along a random spanning tree plus two or
+  three extra links. Discrete rooms and one-tile corridors, because that is what the tactics
+  need — a doorway worth holding, a corridor you can be caught in, and a reason to care which
+  way you came in. (This replaced a cellular-automata cavern generator that produced one
+  enormous connected blob: atmospheric, and tactically flat.) The extra links beyond the
+  spanning tree are not decoration — a pure tree makes every fight a dead end, and the Trace
+  clock needs the player to have somewhere to run.
 - **Act II — Container stacks.** BSP subdivision of the hauler spine: long sightlines down
   service corridors, viewports that permit vision but not movement, airlocks as chokepoints.
   Cameras sit on junctions on purpose.

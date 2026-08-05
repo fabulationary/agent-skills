@@ -1,11 +1,20 @@
 /**
- * Act I generator: flooded service caverns (DESIGN.md §6.9).
+ * Act I generator: the freight yards under Umbilical Gamma (DESIGN.md §6.11).
  *
- * Cellular automata for the caverns, then the largest connected region is kept
- * and everything else is filled in. That guarantees connectivity by
- * construction rather than by repair — the single worst bug class in a
- * roguelike is a floor you cannot finish, so the property test in
- * tests/mapgen.test.ts hammers this over thousands of seeds.
+ * Rogue's layout, not a cave system. The map is divided into a 3x3 grid of
+ * sectors, each gets one rectangular room, and the rooms are joined by
+ * L-shaped corridors along a random spanning tree plus a few extra loops.
+ *
+ * This replaced a cellular-automata cavern generator, which reliably produced
+ * one enormous connected blob — atmospheric, and tactically flat. Rooms and
+ * corridors give the thing roguelikes actually run on: a doorway worth
+ * holding, a corridor you can be caught in, and a reason to care which way you
+ * came in. It also fits the fiction better than caves ever did. These are
+ * loading bays, not caverns.
+ *
+ * Connectivity is guaranteed by construction (a spanning tree over the room
+ * graph) and then verified by flood fill anyway, because a floor you cannot
+ * finish is the worst bug this genre has.
  */
 
 import type { RNG } from '../core/rng.ts';
@@ -15,13 +24,33 @@ import { flowField, reachable, type NavMap } from './path.ts';
 export const MAP_W = 44;
 export const MAP_H = 44;
 
+/** The tier whose room becomes the Warden's loading bay. */
+const BOSS_FLOOR = 4;
+
+const SECTORS_X = 3;
+const SECTORS_Y = 3;
+const SECTOR_W = Math.floor((MAP_W - 2) / SECTORS_X);
+const SECTOR_H = Math.floor((MAP_H - 2) / SECTORS_Y);
+
+export interface Room {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  cx: number;
+  cy: number;
+}
+
 export interface GeneratedMap {
   tiles: number[];
   spawn: { x: number; y: number };
   lift: { x: number; y: number };
-  open: { x: number; y: number }[]; // walkable tiles, spawn-sorted by distance
+  rooms: Room[];
+  open: { x: number; y: number }[];
   distFromSpawn: Int32Array;
 }
+
+const at = (x: number, y: number) => y * MAP_W + x;
 
 function navOf(tiles: number[]): NavMap {
   return {
@@ -32,112 +61,194 @@ function navOf(tiles: number[]): NavMap {
   };
 }
 
-function caStep(src: number[]): number[] {
-  const out = src.slice();
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      let walls = 0;
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0) continue;
-          const nx = x + dx;
-          const ny = y + dy;
-          if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) walls++;
-          else if (src[ny * MAP_W + nx] === Tile.Wall) walls++;
-        }
-      }
-      out[y * MAP_W + x] = walls >= 5 ? Tile.Wall : Tile.Floor;
-    }
+function carveRoom(tiles: number[], room: Room): void {
+  for (let y = room.y; y < room.y + room.h; y++) {
+    for (let x = room.x; x < room.x + room.w; x++) tiles[at(x, y)] = Tile.Floor;
   }
-  return out;
 }
 
-/** Carve a pillared arena around the lift for the floor-4 boss. */
-function carveArena(tiles: number[], cx: number, cy: number): void {
-  const r = 7;
-  for (let y = cy - r; y <= cy + r; y++) {
-    for (let x = cx - r; x <= cx + r; x++) {
-      if (x < 1 || y < 1 || x >= MAP_W - 1 || y >= MAP_H - 1) continue;
-      const d = Math.max(Math.abs(x - cx), Math.abs(y - cy));
-      if (d <= r) tiles[y * MAP_W + x] = d === r ? Tile.Wall : Tile.Floor;
+function carveH(tiles: number[], x1: number, x2: number, y: number): void {
+  if (y <= 0 || y >= MAP_H - 1) return;
+  for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++) {
+    if (x > 0 && x < MAP_W - 1) tiles[at(x, y)] = Tile.Floor;
+  }
+}
+
+function carveV(tiles: number[], y1: number, y2: number, x: number): void {
+  if (x <= 0 || x >= MAP_W - 1) return;
+  for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++) {
+    if (y > 0 && y < MAP_H - 1) tiles[at(x, y)] = Tile.Floor;
+  }
+}
+
+/** L-shaped corridor between two room centres; elbow order chosen by the seed. */
+function connect(tiles: number[], a: Room, b: Room, rng: RNG): void {
+  if (rng.chance(0.5)) {
+    carveH(tiles, a.cx, b.cx, a.cy);
+    carveV(tiles, a.cy, b.cy, b.cx);
+  } else {
+    carveV(tiles, a.cy, b.cy, a.cx);
+    carveH(tiles, a.cx, b.cx, b.cy);
+  }
+}
+
+/** Union-find, so the spanning tree over the room grid is honest. */
+class DisjointSet {
+  private parent: number[];
+
+  constructor(n: number) {
+    this.parent = Array.from({ length: n }, (_, i) => i);
+  }
+
+  find(i: number): number {
+    let node = i;
+    while (this.parent[node] !== node) {
+      this.parent[node] = this.parent[this.parent[node]];
+      node = this.parent[node];
     }
+    return node;
   }
-  // Pillars: cover from a slow, big boss is the intended answer to the fight.
-  for (const [px, py] of [[-3, -3], [3, -3], [-3, 3], [3, 3], [0, -4], [0, 4]]) {
-    const x = cx + px;
-    const y = cy + py;
-    if (x > 0 && y > 0 && x < MAP_W - 1 && y < MAP_H - 1) tiles[y * MAP_W + x] = Tile.Wall;
+
+  union(a: number, b: number): boolean {
+    const ra = this.find(a);
+    const rb = this.find(b);
+    if (ra === rb) return false;
+    this.parent[ra] = rb;
+    return true;
   }
-  // Two entrances, so the player can never be sealed out of the arena.
-  tiles[cy * MAP_W + (cx - r)] = Tile.Floor;
-  tiles[cy * MAP_W + (cx + r)] = Tile.Floor;
-  tiles[cy * MAP_W + cx] = Tile.Lift;
+}
+
+/**
+ * The Warden's loading bay: its room is enlarged and given gantry pillars,
+ * because the answer to that fight is cover and it is too big for the aisles.
+ */
+function expandBossRoom(tiles: number[], room: Room): void {
+  const x0 = Math.max(1, room.x - 2);
+  const y0 = Math.max(1, room.y - 2);
+  const x1 = Math.min(MAP_W - 2, room.x + room.w + 1);
+  const y1 = Math.min(MAP_H - 2, room.y + room.h + 1);
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) tiles[at(x, y)] = Tile.Floor;
+  }
+  room.x = x0;
+  room.y = y0;
+  room.w = x1 - x0 + 1;
+  room.h = y1 - y0 + 1;
+  room.cx = Math.floor(x0 + room.w / 2);
+  room.cy = Math.floor(y0 + room.h / 2);
+
+  for (const [px, py] of [[-3, -2], [3, -2], [-3, 2], [3, 2]]) {
+    const x = room.cx + px;
+    const y = room.cy + py;
+    if (x > x0 && x < x1 && y > y0 && y < y1) tiles[at(x, y)] = Tile.Wall;
+  }
 }
 
 export function generateFloor(rng: RNG, floor: number): GeneratedMap {
   for (let attempt = 0; attempt < 40; attempt++) {
-    // Deeper floors are tighter and more claustrophobic.
-    const fillChance = 0.44 + floor * 0.005;
-    let tiles = new Array<number>(MAP_W * MAP_H);
-    for (let i = 0; i < tiles.length; i++) {
-      const x = i % MAP_W;
-      const y = Math.floor(i / MAP_W);
-      const edge = x === 0 || y === 0 || x === MAP_W - 1 || y === MAP_H - 1;
-      tiles[i] = edge || rng.next() < fillChance ? Tile.Wall : Tile.Floor;
-    }
-    for (let i = 0; i < 4; i++) tiles = caStep(tiles);
+    const tiles = new Array<number>(MAP_W * MAP_H).fill(Tile.Wall);
 
-    // Keep only the largest region; fill the rest. Connectivity by construction.
-    const nav = navOf(tiles);
-    const seen = new Uint8Array(tiles.length);
-    let best: Set<number> | null = null;
-    for (let i = 0; i < tiles.length; i++) {
-      if (seen[i] || !WALKABLE.has(tiles[i])) continue;
-      const region = reachable(nav, { x: i % MAP_W, y: Math.floor(i / MAP_W) });
-      for (const r of region) seen[r] = 1;
-      if (!best || region.size > best.size) best = region;
-    }
-    if (!best || best.size < 420) continue;
-    for (let i = 0; i < tiles.length; i++) {
-      if (WALKABLE.has(tiles[i]) && !best.has(i)) tiles[i] = Tile.Wall;
+    // --- one room per sector ------------------------------------------
+    const rooms: Room[] = [];
+    for (let sy = 0; sy < SECTORS_Y; sy++) {
+      for (let sx = 0; sx < SECTORS_X; sx++) {
+        const ox = 1 + sx * SECTOR_W;
+        const oy = 1 + sy * SECTOR_H;
+        const w = rng.range(5, SECTOR_W - 3);
+        const h = rng.range(4, SECTOR_H - 3);
+        const x = ox + rng.int(SECTOR_W - w);
+        const y = oy + rng.int(SECTOR_H - h);
+        const room: Room = {
+          x, y, w, h,
+          cx: Math.floor(x + w / 2),
+          cy: Math.floor(y + h / 2),
+        };
+        carveRoom(tiles, room);
+        rooms.push(room);
+      }
     }
 
-    // Spawn, then put the lift as far from it as the floor allows.
-    const openIdx = [...best];
-    const spawnIdx = openIdx[rng.int(openIdx.length)];
-    const spawn = { x: spawnIdx % MAP_W, y: Math.floor(spawnIdx / MAP_W) };
+    // --- join them: spanning tree first, then a few loops --------------
+    const edges: [number, number][] = [];
+    for (let sy = 0; sy < SECTORS_Y; sy++) {
+      for (let sx = 0; sx < SECTORS_X; sx++) {
+        const i = sy * SECTORS_X + sx;
+        if (sx + 1 < SECTORS_X) edges.push([i, i + 1]);
+        if (sy + 1 < SECTORS_Y) edges.push([i, i + SECTORS_X]);
+      }
+    }
+    rng.shuffle(edges);
+
+    const dsu = new DisjointSet(rooms.length);
+    const unused: [number, number][] = [];
+    for (const [a, b] of edges) {
+      if (dsu.union(a, b)) connect(tiles, rooms[a], rooms[b], rng);
+      else unused.push([a, b]);
+    }
+    // A pure tree makes every fight a dead end. Two or three extra links give
+    // the player somewhere to run to, which the Trace clock depends on.
+    const extras = 2 + rng.int(2);
+    for (let i = 0; i < extras && unused.length; i++) {
+      const [a, b] = unused.splice(rng.int(unused.length), 1)[0];
+      connect(tiles, rooms[a], rooms[b], rng);
+    }
+
+    // --- spawn and lift, as far apart as the layout allows -------------
+    const spawnRoom = rooms[rng.int(rooms.length)];
+    const spawn = { x: spawnRoom.cx, y: spawnRoom.cy };
+    if (!WALKABLE.has(tiles[at(spawn.x, spawn.y)])) continue;
+
     const dist = flowField(navOf(tiles), [spawn]);
-
-    let far = spawnIdx;
-    for (const i of openIdx) if (dist[i] < 0x7fffffff && dist[i] > dist[far]) far = i;
-    if (dist[far] < 18) continue; // too cramped to be interesting
-
-    const lift = { x: far % MAP_W, y: Math.floor(far / MAP_W) };
-    if (floor === 4) carveArena(tiles, lift.x, lift.y);
-    else tiles[far] = Tile.Lift;
-
-    // Cosmetic variety and one terminal, placed mid-distance so jacking in is
-    // a detour rather than a freebie.
-    for (const i of openIdx) {
-      if (tiles[i] === Tile.Floor && rng.next() < 0.04) tiles[i] = Tile.Rubble;
-      else if (tiles[i] === Tile.Floor && rng.next() < 0.02) tiles[i] = Tile.Grate;
+    let liftRoom = spawnRoom;
+    let best = -1;
+    for (const room of rooms) {
+      const d = dist[at(room.cx, room.cy)];
+      if (d < 0x7fffffff && d > best) {
+        best = d;
+        liftRoom = room;
+      }
     }
-    const mid = openIdx.filter((i) => dist[i] > 8 && dist[i] < dist[far] - 4 && tiles[i] === Tile.Floor);
-    if (mid.length) tiles[rng.pick(mid)] = Tile.Terminal;
+    if (best < 20) continue; // too cramped to be worth the walk
 
-    // Carving the arena can wall the lift off from the rest of the floor.
-    // Re-verify rather than assume: an unreachable exit is an unwinnable run.
-    const finalNav = navOf(tiles);
-    const finalDist = flowField(finalNav, [spawn]);
-    const liftIdx = lift.y * MAP_W + lift.x;
-    if (!WALKABLE.has(tiles[spawn.y * MAP_W + spawn.x])) continue;
-    if (finalDist[liftIdx] >= 0x7fffffff) continue;
+    // The Warden spawns at the lift, so the arena has to BE the lift room.
+    // This expanded an arbitrary room instead, which built the pillars
+    // somewhere the boss never stood and left the actual fight happening in
+    // whatever cramped bay held the exit. The harness saw it immediately: the
+    // Warden went from 8.8% of all deaths to 44.8%.
+    if (floor === BOSS_FLOOR) expandBossRoom(tiles, liftRoom);
 
-    const open = openIdx
-      .filter((i) => WALKABLE.has(tiles[i]) && finalDist[i] < 0x7fffffff)
-      .map((i) => ({ x: i % MAP_W, y: Math.floor(i / MAP_W) }));
+    const lift = { x: liftRoom.cx, y: liftRoom.cy };
+    tiles[at(lift.x, lift.y)] = Tile.Lift;
 
-    return { tiles, spawn, lift, open, distFromSpawn: finalDist };
+    // A terminal in a room that is neither the start nor the exit, so jacking
+    // in is always a detour rather than something you walk past anyway.
+    const midRooms = rooms.filter((r) => r !== spawnRoom && r !== liftRoom);
+    if (midRooms.length) {
+      const t = rng.pick(midRooms);
+      tiles[at(t.cx, t.cy)] = Tile.Terminal;
+    }
+
+    // --- dressing, inside rooms only ----------------------------------
+    for (const room of rooms) {
+      for (let y = room.y; y < room.y + room.h; y++) {
+        for (let x = room.x; x < room.x + room.w; x++) {
+          if (tiles[at(x, y)] !== Tile.Floor) continue;
+          const roll = rng.next();
+          if (roll < 0.05) tiles[at(x, y)] = Tile.Rubble;
+          else if (roll < 0.08) tiles[at(x, y)] = Tile.Grate;
+        }
+      }
+    }
+
+    // --- verify rather than assume ------------------------------------
+    const finalDist = flowField(navOf(tiles), [spawn]);
+    if (finalDist[at(lift.x, lift.y)] >= 0x7fffffff) continue;
+
+    const region = reachable(navOf(tiles), spawn);
+    if (region.size < 220) continue;
+    const open = [...region].map((i) => ({ x: i % MAP_W, y: Math.floor(i / MAP_W) }));
+
+    return { tiles, spawn, lift, rooms, open, distFromSpawn: finalDist };
   }
   throw new Error('mapgen: exhausted attempts');
 }

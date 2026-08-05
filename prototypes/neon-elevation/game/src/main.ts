@@ -18,19 +18,22 @@ import {
   actorAt, createWorld, deserialize, isWalkable, makeActor, navOf, serialize,
   tileAt, updateFov,
 } from './sim/world.ts';
-import { drawText, textWidth } from './render/font.ts';
+import { CHAR_W, drawText, textWidth } from './render/font.ts';
 import { buildSlots, drawActionBar, drawLog, drawStatus, type SlotDef } from './render/hud.ts';
 import { cameraOrigin, computeLayout, TILE, type Layout } from './render/layout.ts';
 import { P, SEM } from './render/palette.ts';
 import { drawScene, newFx, spriteForItem, type SceneFx } from './render/scene.ts';
 import { drawSprite } from './render/sprites.ts';
+import {
+  LEGEND, LEGEND_FOOTER, LEGEND_RULES, LEGEND_SUBTITLE, LEGEND_TITLE,
+} from './render/legend.ts';
 import { DEFAULT_GESTURE_CONFIG, GestureRecognizer, type Gesture } from './input/gestures.ts';
 import {
   clearRun, flushRun, loadMeta, loadRun, loadSettings, saveMeta, saveRun, saveSettings,
   type Settings,
 } from './platform/storage.ts';
 
-type Mode = 'play' | 'inventory' | 'targeting' | 'install' | 'over';
+type Mode = 'title' | 'play' | 'inventory' | 'targeting' | 'install' | 'over';
 
 const screen = document.getElementById('screen') as HTMLCanvasElement;
 const out = screen.getContext('2d')!;
@@ -42,7 +45,7 @@ let settings: Settings = loadSettings();
 let meta = loadMeta();
 let world: World;
 let fx: SceneFx = newFx();
-let mode: Mode = 'play';
+let mode: Mode = 'title';
 let slots: SlotDef[] = [];
 let pendingSpike: SpikeKind | null = null;
 let activeSlot: number | null = null;
@@ -75,6 +78,9 @@ if (restoredWorld && !restoredWorld.dead && !restoredWorld.won) {
 } else {
   startRun();
 }
+// Set last: startRun() flips the mode to 'play', so booting into the legend
+// has to happen after the world exists, not before it.
+mode = 'title';
 
 function persist(): void {
   saveRun(serialize(world));
@@ -214,6 +220,13 @@ function slotIndexUnder(lx: number, ly: number): number | null {
 }
 
 function onGesture(gesture: Gesture): void {
+  if (mode === 'title') {
+    if (gesture.kind === 'tap' || gesture.kind === 'swipe') {
+      mode = 'play';
+      dirty = true;
+    }
+    return;
+  }
   if (mode === 'over') {
     if (gesture.kind === 'tap') startRun();
     return;
@@ -241,6 +254,11 @@ function onGesture(gesture: Gesture): void {
   }
 
   if (gesture.kind === 'longpress') {
+    if (gesture.y >= layout.barY) {
+      mode = 'title';
+      dirty = true;
+      return;
+    }
     const tile = tileUnder(gesture.x, gesture.y);
     if (!tile) return;
     inspect(tile.x, tile.y);
@@ -394,6 +412,16 @@ new GestureRecognizer(screen, toLogical, onGesture, {
 
 // Android back button / Escape: cancel targeting, then close a panel.
 window.addEventListener('keydown', (e) => {
+  if (mode === 'title') {
+    mode = 'play';
+    dirty = true;
+    return;
+  }
+  if (e.key === '?' || e.key === 'h' || e.key === 'H') {
+    mode = 'title';
+    dirty = true;
+    return;
+  }
   if (e.key === 'Escape') {
     if (mode === 'targeting' || mode === 'install' || mode === 'inventory') {
       mode = 'play';
@@ -421,6 +449,57 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', flushRun);
 
 // --- panels -----------------------------------------------------------------
+
+/**
+ * Start screen: the legend, drawn with the game's own sprites.
+ *
+ * A 16x16 pixel enemy has to be readable at a glance on a phone, and the
+ * cheapest way to guarantee that is to show the player every glyph once,
+ * labelled, before the Trace clock starts running.
+ */
+function drawTitleScreen(): void {
+  g.fillStyle = SEM.void;
+  g.fillRect(0, 0, layout.logicalW, layout.logicalH);
+
+  drawText(g, LEGEND_TITLE, (layout.logicalW - textWidth(LEGEND_TITLE)) / 2, 6, SEM.you);
+  drawText(g, LEGEND_SUBTITLE, (layout.logicalW - textWidth(LEGEND_SUBTITLE)) / 2, 16, P.e, 0.8);
+
+  const colX = [3, 91];
+  const rowH = 16;
+  let y = 28;
+
+  for (const section of LEGEND) {
+    drawText(g, section.heading, 3, y, SEM.interactive);
+    g.fillStyle = P.b;
+    const ruleX = 3 + textWidth(section.heading) + 4;
+    g.fillRect(ruleX, y + 3, layout.logicalW - ruleX - 3, 1);
+    y += 10;
+
+    section.entries.forEach((entry, i) => {
+      const x = colX[i % 2];
+      const ry = y + Math.floor(i / 2) * rowH;
+      // A floor-coloured plate behind every glyph. Without it the Lift — which
+      // is almost entirely dark steel — was invisible against the black
+      // background, and the legend silently listed a thing you could not see.
+      g.fillStyle = P.b;
+      g.fillRect(x, ry - 2, 13, 13);
+      g.fillStyle = P.a;
+      g.fillRect(x, ry - 2, 13, 1);
+      drawSprite(g, entry.sprite, x - 2, ry - 4);
+      drawText(g, entry.label, x + 16, ry + 1, entry.grown ? P.j : SEM.textBright);
+    });
+    y += Math.ceil(section.entries.length / 2) * rowH + 4;
+  }
+
+  y += 2;
+  const ruleColors = [P.n, P.j, P.j, P.z];
+  LEGEND_RULES.forEach((text, i) => {
+    drawText(g, text, 3, y + i * 9, ruleColors[i]);
+  });
+
+  drawText(g, LEGEND_FOOTER, (layout.logicalW - textWidth(LEGEND_FOOTER)) / 2,
+    layout.logicalH - 12, SEM.interactive);
+}
 
 function drawPanel(title: string, height: number): { x: number; y: number; w: number } {
   const x = 6;
@@ -510,13 +589,17 @@ function drawGameOver(): void {
   const height = layout.viewRows * TILE - 16;
   const panel = drawPanel(world.won ? 'ACT I CLEARED' : 'FLATLINED', height);
   let y = panel.y + 24;
-  const lines = world.won
-    ? ['THE WARDEN IS DOWN.', 'BASELINE IS BEHIND YOU.', 'THE TETHER GOES ON WITHOUT END.']
-    : ['UMBILICAL GAMMA KEEPS WHAT IT KILLS.', 'YOUR BROKER WILL HEAR ABOUT IT', 'FROM SOMEONE ELSE.'];
-  for (const line of lines) {
+  // Column count is derived from the panel, not guessed. The previous
+  // hardcoded copy ran off the right edge — "UMBILICAL GAMMA KEEPS WHAT I".
+  const cols = Math.floor((panel.w - 8) / CHAR_W);
+  const prose = world.won
+    ? 'THE WARDEN IS DOWN. BASELINE IS BEHIND YOU, AND THE TETHER GOES ON WITHOUT END.'
+    : 'UMBILICAL GAMMA KEEPS WHAT IT KILLS. YOUR BROKER WILL HEAR ABOUT IT FROM SOMEONE ELSE.';
+  for (const line of wrap(prose, cols)) {
     drawText(g, line, panel.x + 4, y, world.won ? P.v : P.D);
-    y += 10;
+    y += 9;
   }
+  y += 4;
   y += 8;
   drawText(g, `REACHED    TIER 0${world.floor}`, panel.x + 4, y, P.e); y += 10;
   drawText(g, `TURNS      ${world.turn}`, panel.x + 4, y, P.e); y += 10;
@@ -601,6 +684,17 @@ function frame(now: number): void {
   // 6fps ambient tick for neon flicker; everything else is event-driven.
   const tick = now - lastTileAnim > 166;
   if (tick) lastTileAnim = now;
+
+  if (mode === 'title') {
+    if (dirty) {
+      drawTitleScreen();
+      out.imageSmoothingEnabled = false;
+      out.drawImage(buffer, 0, 0, screen.width, screen.height);
+      dirty = false;
+    }
+    requestAnimationFrame(frame);
+    return;
+  }
 
   if (dirty || animating || tick) {
     slots = buildSlots(world);

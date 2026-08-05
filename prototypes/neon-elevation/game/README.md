@@ -5,7 +5,7 @@ Playable prototype. TypeScript + canvas, no runtime dependencies, no external as
 ```bash
 npm install
 npm run dev        # http://localhost:5173 — resize the window narrow to see portrait
-npm test           # 49 tests: FOV symmetry, mapgen properties, determinism, the family and subversion rules, palette lint
+npm test           # 53 tests: FOV symmetry, mapgen properties, determinism, the family and subversion rules, palette lint
 npm run balance    # headless bot plays 250 runs and reports the distributions
 npm run build      # typecheck + bundle (currently 21.5 KB gzipped)
 ```
@@ -20,6 +20,7 @@ npm run build      # typecheck + bundle (currently 21.5 KB gzipped)
 | Long-press — inspect, costs no turn | — |
 | Tap an action slot, then a target | — |
 | Back / `Esc` — cancel targeting, close panel | `Esc` |
+| Long-press the action bar — reopen the legend | `?` or `H` |
 
 Standing on the lift and tapping yourself ascends. Standing on a terminal and
 tapping yourself jacks in for POWER and a map fragment.
@@ -28,7 +29,8 @@ tapping yourself jacks in for POWER and a map fragment.
 
 - Energy-scheduler turn engine; enemy energy accrues relative to player speed, so speed grafts buy real turns
 - Symmetric shadowcasting FOV, three-state fog (visible / remembered / unknown), actors never drawn in remembered tiles
-- Act I freight-yard generator, 4 tiers, connectivity guaranteed by construction and verified by test
+- Act I freight-yard generator: Rogue-style rooms and corridors over a 3x3 sector grid, 4 tiers, connectivity guaranteed by a spanning tree and verified by flood fill over 1,200 generated floors
+- Start-screen legend showing every sprite in the game, labelled, with the machine/grown rule stated in words — the one place it is
 - Trace clock: all five states, escalating waves, the Hunter-Killer at PURGE
 - Combat: melee, SMG with a Trace bill per shot, three spikes, flat armor
 - **The family rule** (DESIGN.md §6.5): machines are spikeable, EMP-able, leak Trace when killed, and lose you when you break line of sight. Biosynths are none of those — they track by scent through walls and never forget, and only a Scent Baffle sheds them
@@ -64,26 +66,36 @@ Current report (250 runs, greedy bot):
 
 ```
 TIER REACHED                         CAUSE OF DEATH
-  TIER 02   18  ####                  GRAFTED          25.2%  <-- at the line
-  TIER 03  152  #####################  THE WARDEN      18.0%
-  TIER 04   80  ##################     SEC-DRONE       15.2%
-                                       PICKER           9.6%
-  win rate 7.6%                        DOCK DRONE       9.6%
-  median turns/run 169                 STRAY            8.0%
-  median trace at ascent 72            extracted        7.6%
-                                       DOCK TURRET      6.8%
+  TIER 02    3  #                     THE WARDEN       36.8%  (boss)
+  TIER 03  100  ##################    GRAFTED          21.2%
+  TIER 04  136  ########################  SEC-DRONE    12.4%
+                                      DOCK TURRET       7.6%
+  win rate 6.8%                       extracted         6.8%
+  median turns/run 218                DOCK DRONE        6.0%
+  median trace at ascent 74           PICKER            4.8%
+                                      STRAY             3.6%
+BOSS
+  reached tier 4   136
+  beat the Warden   17  (12.5% of arrivals)
 ```
 
-**Adding the Stray fixed the concentration problem on its own.** Grafted went from 32.8% of
-deaths to 25.2% and the win rate nearly doubled (4.0% → 7.6%) without touching a single stat —
-because a threat that answers to none of the player's machine-facing tools spreads the pressure
-that one fast melee enemy used to carry alone. That is the family rule paying for itself in the
-distribution, not just in the fiction.
+No regular enemy is over the 25% line. The Warden is exempt from that rule and
+measured separately — a final boss on the last tier of the slice concentrates deaths by
+construction, since every run that arrives either beats it or dies to it. The number that
+actually matters for a boss is the 12.5% arrival win rate, achieved by a bot that never
+kites, never conserves ammo and melees everything adjacent.
 
-Grafted is now exactly at the 25% line rather than well past it. Left there deliberately: the
-bot still melees everything adjacent and never uses a spike, a baffle or a retreat, so the
-fastest melee enemy will always over-index against it. Whether the remaining margin is real is a
-human-playtest question.
+Three tuning passes got here, each driven by a measurement rather than a hunch:
+
+- **Grafted 130 → 115 speed, 5–9 → 4–8 damage.** It caused 42% of all deaths.
+- **Adding the Stray** took Grafted from 32.8% to 25.2% with no further stat change —
+  a threat that answers to none of the machine-facing tools spreads pressure that one fast
+  melee enemy used to carry alone.
+- **Warden armor 5 → 2, HP 130 → 100.** Armor 5 against a 6–11 starting weapon meant melee
+  landed 3.5 a hit: 38 turns to kill while it killed you in 9. A player out of SMG rounds
+  could not win at all. That was never "use the terrain", it was a dead verb — and the
+  room-and-corridor generator is what finally made it visible, because the old caves gave
+  enough open space to avoid finding out.
 
 ## Layout
 

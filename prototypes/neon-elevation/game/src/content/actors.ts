@@ -191,8 +191,13 @@ export const ACTORS: Record<string, ActorTemplate> = {
     name: 'THE WARDEN',
     sprite: 'warden',
     family: 'human',
-    hp: 130,
-    armor: 5,
+    hp: 100,
+    // Was armor 5 against a starting weapon that rolls 6-11 — melee landed
+    // 3.5 a hit, needed 38 turns, and killed you in 9. That is not "use the
+    // terrain", it is a verb that does not work, and a player out of SMG
+    // rounds simply could not win. At 2 the exosuit still shrugs off chip
+    // damage and still cannot be traded with toe-to-toe.
+    armor: 2,
     dmgLo: 10,
     dmgHi: 16,
     speed: 80, // slow: the loading bay's gantries are the answer

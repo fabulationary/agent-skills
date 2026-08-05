@@ -218,18 +218,35 @@ function main(): void {
   console.log(`  median instability  ${median(results.map((r) => r.instability))}`);
   console.log(`  median trace at ascent ${median(allAscentTrace)}`);
 
+  // The 25% rule is about regular enemies. A final boss on the last tier
+  // concentrates deaths by construction — every run that gets there either
+  // beats it or dies to it — so it gets measured on its own terms instead.
+  const BOSSES = new Set(['THE WARDEN']);
+
   console.log('\nCAUSE OF DEATH');
   const sorted = Object.entries(deaths).sort((a, b) => b[1] - a[1]);
   for (const [cause, count] of sorted) {
     const pct = (count / runs) * 100;
-    const flag = pct > 25 && cause !== 'extracted' && cause !== 'timeout' ? '  <-- over 25%, balance bug' : '';
-    console.log(`  ${cause.padEnd(18)} ${String(count).padStart(4)}  ${pct.toFixed(1)}%${flag}`);
+    const exempt = cause === 'extracted' || cause === 'timeout' || BOSSES.has(cause);
+    const flag = pct > 25 && !exempt ? '  <-- over 25%, balance bug' : '';
+    const note = BOSSES.has(cause) ? '  (boss - see below)' : '';
+    console.log(`  ${cause.padEnd(18)} ${String(count).padStart(4)}  ${pct.toFixed(1)}%${flag}${note}`);
+  }
+
+  // The number that actually says whether the boss is fair.
+  const reachedBoss = results.filter((r) => r.floor >= FINAL_FLOOR).length;
+  if (reachedBoss > 0) {
+    const beat = results.filter((r) => r.won).length;
+    console.log('\nBOSS');
+    console.log(`  reached tier ${FINAL_FLOOR}      ${reachedBoss}`);
+    console.log(`  beat the Warden     ${beat}  (${((beat / reachedBoss) * 100).toFixed(1)}% of arrivals)`);
   }
 
   console.log('');
   // Any single enemy causing more than a quarter of deaths is a balance bug,
   // and CI should say so out loud.
-  const worst = sorted.find(([cause]) => cause !== 'extracted' && cause !== 'timeout');
+  const worst = sorted.find(([cause]) =>
+    cause !== 'extracted' && cause !== 'timeout' && !BOSSES.has(cause));
   if (worst && worst[1] / runs > 0.25) {
     console.log(`WARN: ${worst[0]} causes ${((worst[1] / runs) * 100).toFixed(1)}% of all deaths.`);
   }
